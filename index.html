@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🏇 Horse Racing Legend</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN / CUENTA -->
+<section id="pantalla-login" class="pantalla">
+    <div class="menu-banner">
+        <h1>🏇 Horse Racing Legend</h1>
+        <p class="subtitulo">Inicia sesión para guardar tu partida en la nube.</p>
+    </div>
+    <div class="tarjeta" style="max-width:420px;margin:20px auto">
+        <h2>👤 Cuenta</h2>
+        <div class="form-grupo mt-10">
+            <label>Correo</label>
+            <input type="email" id="auth-email" placeholder="tu_correo@email.com" autocomplete="email">
+        </div>
+        <div class="form-grupo">
+            <label>Contraseña</label>
+            <input type="password" id="auth-password" placeholder="mínimo 6 caracteres" autocomplete="current-password">
+        </div>
+        <div class="flex-row mt-10">
+            <button class="btn btn-success" onclick="AuthUI.login()">Entrar</button>
+            <button class="btn btn-purple" onclick="AuthUI.register()">Crear cuenta</button>
+        </div>
+        <p class="muted mt-10" style="font-size:.85em">
+            Tu progreso se guarda en la base de datos del servidor y podrás jugar desde cualquier celular con la APK.
+        </p>
+    </div>
+</section>
+
+<!-- MENÚ PRINCIPAL -->
+<section id="pantalla-menu" class="pantalla activa">
+    <div class="menu-banner">
+        <h1>🏇 Horse Racing Legend</h1>
+        <p class="subtitulo">Críalos. Entrénalos. Hazlos campeones.</p>
+        <div class="menu-info">
+            <div>💰 <span id="menu-dinero">0</span></div>
+            <div>🐴 <span id="menu-caballos">0</span></div>
+            <div>🏆 <span id="menu-victorias">0</span></div>
+            <div>📅 Día <span id="menu-dia">1</span></div>
+        </div>
+        <div class="menu-nivel-row">
+            <span class="menu-nivel-badge">🌟 Nv. <span id="menu-nivel-jugador">1</span></span>
+            <div class="menu-xp-bar"><div class="menu-xp-fill" id="menu-xp-fill" style="width:0%"></div></div>
+            <span class="muted" style="font-size:.75em;white-space:nowrap"><span id="menu-xp-actual">0</span>/<span id="menu-xp-max">300</span> XP</span>
+        </div>
+    </div>
+    <div id="recompensa-diaria-cont"></div>
+    <div class="menu-botones">
+        <button class="btn" onclick="UI.show('pantalla-carreras')">🏁 Carreras</button>
+        <button class="btn btn-sec" onclick="UI.show('pantalla-caballos')">🐴 Mis Caballos</button>
+        <button class="btn btn-sec" onclick="UI.show('pantalla-tienda')">🏪 Tienda</button>
+        <button class="btn btn-success" onclick="UI.show('pantalla-online')">🌐 Jugar en línea</button>
+        <button class="btn btn-sec" onclick="UI.show('pantalla-amigos')">👥 Amigos</button>
+        <button class="btn btn-purple" onclick="UI.show('pantalla-cria')">💕 Cría / Breeding</button>
+        <button class="btn btn-sec" onclick="UI.show('pantalla-logros')">🏅 Logros</button>
+        <button class="btn btn-sec" onclick="UI.show('pantalla-stats')">📊 Estadísticas</button>
+        <button class="btn btn-purple" onclick="UI.show('pantalla-admin')">⚙️ Admin Panel</button>
+        <button class="btn btn-sec btn-pequeño" onclick="AuthUI.logout()">🚪 Cerrar sesión</button>
+        <button class="btn btn-danger btn-pequeño" style="margin-top:15px" onclick="UI.confirmarReinicio()">🔄 Reiniciar Partida</button>
+    </div>
+</section>
+
+<!-- ONLINE -->
+<section id="pantalla-online" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>🌐 Jugar en línea</h2>
+    </div>
+    <div id="online-contenido"></div>
+</section>
+
+<!-- AMIGOS -->
+<section id="pantalla-amigos" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>👥 Amigos</h2>
+    </div>
+    <div id="amigos-contenido"></div>
+</section>
+
+<!-- MIS CABALLOS -->
+<section id="pantalla-caballos" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>🐴 Mis Caballos</h2>
+        <div class="dinero">$<span class="d-val">0</span></div>
+    </div>
+    <div id="lista-caballos"></div>
+</section>
+
+<!-- CARRERAS -->
+<section id="pantalla-carreras" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>🏁 Carreras</h2>
+        <div class="dinero">$<span class="d-val">0</span></div>
+    </div>
+    <div id="caballo-seleccionado-info" style="display:none"></div>
+    <div id="lista-carreras"></div>
+</section>
+
+<!-- SIMULACIÓN -->
+<section id="pantalla-simulacion" class="pantalla">
+    <div class="hud-carrera">
+        <div>
+            <div id="titulo-simulacion" style="font-weight:bold">Carrera</div>
+            <div class="muted" id="info-simulacion"></div>
+        </div>
+        <div class="pos-actual"><span id="distancia-actual">0</span>/<span id="distancia-total">0</span>m</div>
+    </div>
+    <div class="escena-carrera" id="escena-carrera">
+        <div class="cielo">
+            <div class="sol"></div>
+            <div class="nube nube-1"></div>
+            <div class="nube nube-2"></div>
+            <div class="nube nube-3"></div>
+        </div>
+        <div class="lluvia" id="lluvia"></div>
+        <div class="montañas"></div>
+        <div class="gradas"></div>
+        <div class="pista">
+            <div class="meta-final"></div>
+            <div class="carriles" id="carriles"></div>
+        </div>
+    </div>
+    <p class="muted text-center">🏟️ Tu posición: <b id="pos-actual">-</b></p>
+</section>
+
+<!-- RESULTADOS -->
+<section id="pantalla-resultados" class="pantalla">
+    <div class="header"><h2>🏆 Resultados</h2></div>
+    <div id="lista-resultados" class="tarjeta"></div>
+    <div id="resumen-resultados" class="tarjeta"></div>
+    <div class="flex-row">
+        <button class="btn" onclick="UI.show('pantalla-carreras')">🔁 Otra Carrera</button>
+        <button class="btn btn-sec" onclick="UI.show('pantalla-menu')">🏠 Menú</button>
+    </div>
+</section>
+
+<!-- TIENDA -->
+<section id="pantalla-tienda" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>🏪 Tienda</h2>
+        <div class="dinero">$<span class="d-val">0</span></div>
+    </div>
+    <div class="tabs" id="tienda-tabs">
+        <button class="tab activa" data-tab="caballos">🐴 Caballos</button>
+        <button class="tab" data-tab="entrenamientos">💪 Entrenar</button>
+        <button class="tab" data-tab="equipamiento">🏇 Equipo</button>
+        <button class="tab" data-tab="items">🧪 Items</button>
+    </div>
+    <div id="tienda-contenido"></div>
+</section>
+
+<!-- CRÍA -->
+<section id="pantalla-cria" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>💕 Cría</h2>
+        <div class="dinero">$<span class="d-val">0</span></div>
+    </div>
+    <div id="cria-contenido"></div>
+</section>
+
+<!-- LOGROS -->
+<section id="pantalla-logros" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>🏅 Logros</h2>
+    </div>
+    <div id="lista-logros"></div>
+</section>
+
+<!-- STATS -->
+<section id="pantalla-stats" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>📊 Estadísticas</h2>
+    </div>
+    <div id="contenido-stats"></div>
+</section>
+
+<!-- ADMIN -->
+<section id="pantalla-admin" class="pantalla">
+    <div class="header">
+        <button class="btn btn-sec btn-pequeño" onclick="UI.show('pantalla-menu')">← Volver</button>
+        <h2>⚙️ Admin <span class="admin-flag">ADMIN</span></h2>
+    </div>
+    <p class="muted mb-10">Modifica el juego en tiempo real. Los cambios se guardan automáticamente.</p>
+    <div class="tabs" id="admin-tabs">
+        <button class="tab activa" data-tab="razas">🐎 Razas</button>
+        <button class="tab" data-tab="carreras">🏁 Carreras</button>
+        <button class="tab" data-tab="caballos">🐴 Caballos</button>
+        <button class="tab" data-tab="equipamiento">🏇 Equipo</button>
+        <button class="tab" data-tab="skins">🎨 Skins</button>
+        <button class="tab" data-tab="entrenamientos">💪 Entr.</button>
+        <button class="tab" data-tab="items">🧪 Items</button>
+        <button class="tab" data-tab="economia">💰 Cheats</button>
+        <button class="tab" data-tab="datos">💾 Datos</button>
+    </div>
+    <div id="admin-contenido"></div>
+</section>
+
+<div id="toast"></div>
+<div id="modal-fondo" class="modal-fondo">
+    <div class="modal">
+        <h3 id="modal-titulo">Confirmar</h3>
+        <div id="modal-mensaje"></div>
+        <div class="modal-botones" id="modal-botones"></div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="auth.js"></script>
+<script src="sprites.js"></script>
+<script src="game.js"></script>
+<script src="ui.js"></script>
+<script src="admin.js"></script>
+<script src="init.js"></script>
+</body>
+</html>

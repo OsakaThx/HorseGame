@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Auto Sprite Detector</title>
+<style>
+  body{margin:0;background:#1b1b22;color:#eee;font-family:system-ui,sans-serif;padding:18px;font-size:13px}
+  h1{margin:0 0 10px;font-size:20px}
+  h2{font-size:14px;margin:0 0 8px;color:#f5b041}
+  .row{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+  .panel{background:#262631;padding:14px;border-radius:8px}
+  canvas.sheet{background:#fff;display:block;image-rendering:pixelated}
+  .preview{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+  .pv{background:#0a0a10;padding:8px;border-radius:6px;text-align:center;width:160px}
+  .pv canvas{background:#88c070;display:block;margin:0 auto;image-rendering:pixelated;border-radius:3px}
+  .pv b{display:block;margin-top:6px;font-size:12px;color:#f5b041}
+  .pv small{color:#aaa;font-size:10px;display:block;line-height:1.4}
+  .pv select{width:100%;margin-top:4px;background:#111;color:#eee;border:1px solid #444;padding:3px;font-size:11px;border-radius:3px}
+  button{background:#f5b041;color:#000;border:0;padding:8px 14px;border-radius:4px;font-weight:bold;cursor:pointer;margin:6px 4px 0 0}
+  textarea{width:100%;height:200px;background:#000;color:#0f0;font-family:monospace;font-size:10px;border:1px solid #444;border-radius:4px;padding:6px;box-sizing:border-box}
+  .info{margin-top:8px;font-size:12px;color:#aaa}
+  .ok{color:#5cb85c;font-weight:bold}
+  ol{margin:6px 0;padding-left:20px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>🐎 Auto Sprite Detector</h1>
+
+<div class="panel" style="margin-bottom:14px">
+  <h2>Cómo funciona</h2>
+  <ol>
+    <li>Carga el PNG (o usa el ya cargado).</li>
+    <li>El detector escanea automáticamente buscando <b>píxeles transparentes</b> que separan los frames y agrupa por filas.</li>
+    <li>Cada fila detectada aparece como una <b>animación previsualizada</b>. Asígnale un nombre del menú desplegable (idle, walk, gallop_right, etc.).</li>
+    <li>Click <b>Exportar</b> y se guarda la config lista para usar en el juego.</li>
+  </ol>
+  <input type="file" id="file" accept="image/png">
+  <button onclick="autoDetect()">🔍 Auto-detectar frames</button>
+  <span id="status" class="info"></span>
+</div>
+
+<div class="panel">
+  <h2>Sprite sheet original</h2>
+  <div style="overflow:auto;max-height:50vh">
+    <canvas id="sheet" class="sheet"></canvas>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:14px">
+  <h2>Animaciones detectadas <span style="color:#aaa;font-size:11px">(asigna un nombre a cada fila)</span></h2>
+  <div class="preview" id="previews"></div>
+</div>
+
+<div class="panel" style="margin-top:14px">
+  <h2>Config JSON</h2>
+  <button onclick="exportConfig()">📋 Generar JSON</button>
+  <button onclick="copyJson()">📎 Copiar</button>
+  <button onclick="saveToGame()">🎮 Guardar para el juego (sprites.js)</button>
+  <textarea id="out"></textarea>
+</div>
+
+<script>
+const ANIM_NAMES = [
+  '(sin asignar)',
+  'idle_left','eat_left','walk_left','trot_left','gallop_left',
+  'idle_right','eat_right','walk_right','trot_right','gallop_right',
+  'idle_down','walk_down','idle_up','walk_up'
+];
+// Mapeo inteligente sugerido por orden típico
+const SUGGESTED = ['idle_left','eat_left','walk_left','trot_left','gallop_left',
+                   'idle_right','eat_right','walk_right','trot_right','gallop_right'];
+
+let img = new Image();
+let imgData = null;
+let detected = []; // [{y, h, frames:[{x,y,w,h}], name, fps}]
+const sheet = document.getElementById('sheet');
+const sctx = sheet.getContext('2d');
+
+function loadImg(src){
+  img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = ()=>{
+    sheet.width = img.naturalWidth;
+    sheet.height = img.naturalHeight;
+    sctx.imageSmoothingEnabled = false;
+    sctx.drawImage(img, 0, 0);
+    imgData = sctx.getImageData(0,0,sheet.width,sheet.height);
+    document.getElementById('status').textContent = `✓ Imagen cargada: ${img.naturalWidth}x${img.naturalHeight}`;
+    autoDetect();
+  };
+  img.src = src;
+}
+
+document.getElementById('file').onchange = e=>{
+  const f = e.target.files[0]; if(!f) return;
+  loadImg(URL.createObjectURL(f));
+};
+
+function alphaAt(x,y){
+  return imgData.data[(y*imgData.width + x)*4 + 3];
+}
+function rowHasContent(y){
+  for(let x=0;x<imgData.width;x++) if(alphaAt(x,y) > 10) return true;
+  return false;
+}
+function colHasContentInBand(x, y1, y2){
+  for(let y=y1;y<y2;y++) if(alphaAt(x,y) > 10) return true;
+  return false;
+}
+
+function autoDetect(){
+  if(!imgData){ document.getElementById('status').textContent = 'Carga una imagen primero'; return; }
+  const W = imgData.width, H = imgData.height;
+
+  // 1) bandas horizontales
+  const bands = [];
+  let inBand=false, start=0;
+  for(let y=0;y<H;y++){
+    const has = rowHasContent(y);
+    if(has && !inBand){ start=y; inBand=true; }
+    else if(!has && inBand){ bands.push([start, y-1]); inBand=false; }
+  }
+  if(inBand) bands.push([start, H-1]);
+
+  // 2) por cada banda, frames separados por columnas vacías
+  detected = [];
+  bands.forEach((b,i)=>{
+    const y1=b[0], y2=b[1]+1;
+    const frames=[];
+    let inFr=false, sx=0;
+    for(let x=0;x<W;x++){
+      const has = colHasContentInBand(x,y1,y2);
+      if(has && !inFr){ sx=x; inFr=true; }
+      else if(!has && inFr){ frames.push({x:sx, y:y1, w:x-sx, h:y2-y1}); inFr=false; }
+    }
+    if(inFr) frames.push({x:sx,y:y1,w:W-sx,h:y2-y1});
+    // Solo guardamos bandas significativas (al menos 1 frame visible)
+    if(frames.length > 0 && (y2-y1) > 10){
+      // Normalizar: usar el ancho/alto máximo
+      const maxW = Math.max(...frames.map(f=>f.w));
+      const maxH = Math.max(...frames.map(f=>f.h));
+      detected.push({
+        y:y1, h:y2-y1, frames, maxW, maxH,
+        name: SUGGESTED[detected.length] || '(sin asignar)',
+        fps: 8
+      });
+    }
+  });
+
+  document.getElementById('status').innerHTML = `<span class="ok">✓ ${detected.length} animaciones detectadas, ${detected.reduce((s,d)=>s+d.frames.length,0)} frames en total</span>`;
+  renderPreviews();
+  drawSheetOverlay();
+}
+
+function drawSheetOverlay(){
+  sctx.imageSmoothingEnabled = false;
+  sctx.drawImage(img, 0, 0);
+  detected.forEach((d,i)=>{
+    sctx.strokeStyle = `hsl(${i*36},90%,55%)`;
+    sctx.lineWidth = 2;
+    d.frames.forEach(f=>{
+      sctx.strokeRect(f.x, f.y, f.w, f.h);
+    });
+    sctx.fillStyle = `hsla(${i*36},90%,55%,0.9)`;
+    sctx.font = 'bold 11px sans-serif';
+    sctx.fillText(d.name, 4, d.y+12);
+  });
+}
+
+function renderPreviews(){
+  const cont = document.getElementById('previews');
+  cont.innerHTML = '';
+  detected.forEach((d, i)=>{
+    const div = document.createElement('div');
+    div.className = 'pv';
+    const cvSize = Math.max(d.maxW, d.maxH) * 1.4;
+    div.innerHTML = `
+      <canvas width="${cvSize}" height="${cvSize}"></canvas>
+      <b>Fila ${i}</b>
+      <small>y=${d.y} · ${d.frames.length} frames<br>frame ~${d.maxW}x${d.maxH}</small>
+      <select data-i="${i}">
+        ${ANIM_NAMES.map(n=>`<option value="${n}" ${n===d.name?'selected':''}>${n}</option>`).join('')}
+      </select>
+      <label style="font-size:10px;color:#aaa;display:block;margin-top:4px">
+        fps: <input type="number" value="${d.fps}" min="1" max="30" data-i="${i}" data-k="fps" style="width:40px;background:#111;color:#eee;border:1px solid #444;border-radius:3px">
+      </label>
+    `;
+    cont.appendChild(div);
+    const cv = div.querySelector('canvas');
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    let frame=0, last=0;
+    function loop(t){
+      if(!cv.isConnected) return;
+      if(t-last > 1000/d.fps){
+        last=t;
+        ctx.clearRect(0,0,cv.width,cv.height);
+        const f = d.frames[frame];
+        // Centrar el frame dentro del canvas de preview
+        const scale = Math.min(cv.width/d.maxW, cv.height/d.maxH);
+        const dw = f.w*scale, dh = f.h*scale;
+        const dx = (cv.width-dw)/2, dy = (cv.height-dh)/2;
+        ctx.drawImage(img, f.x, f.y, f.w, f.h, dx, dy, dw, dh);
+        frame = (frame+1) % d.frames.length;
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  });
+  cont.querySelectorAll('select').forEach(s=>{
+    s.onchange = e=>{ detected[+e.target.dataset.i].name = e.target.value; drawSheetOverlay(); };
+  });
+  cont.querySelectorAll('input[data-k=fps]').forEach(inp=>{
+    inp.oninput = e=>{ detected[+e.target.dataset.i].fps = +e.target.value || 8; };
+  });
+}
+
+function exportConfig(){
+  const cfg = {
+    sheet: { w: img.naturalWidth, h: img.naturalHeight },
+    animations: {}
+  };
+  detected.forEach(d=>{
+    if(d.name && d.name !== '(sin asignar)'){
+      cfg.animations[d.name] = { fps: d.fps, frames: d.frames };
+    }
+  });
+  document.getElementById('out').value = JSON.stringify(cfg, null, 2);
+}
+
+function copyJson(){
+  const t = document.getElementById('out');
+  if(!t.value) exportConfig();
+  t.select(); document.execCommand('copy');
+  alert('Copiado al portapapeles ✓');
+}
+
+function saveToGame(){
+  exportConfig();
+  const cfg = JSON.parse(document.getElementById('out').value);
+  const js = `// Auto-generado por tools/sprite_inspector.html
+// Coordenadas exactas de cada frame del sprite sheet del caballo principal.
+const SPRITE_CONFIG = ${JSON.stringify(cfg, null, 2)};
+`;
+  // Descargar como archivo
+  const blob = new Blob([js], {type:'text/javascript'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sprite_config.js';
+  a.click();
+  alert('Archivo sprite_config.js descargado. Muévelo a la carpeta del juego.');
+}
+
+// Auto-cargar
+loadImg('../assets/Full_Pack/Horse_Sprite_Asset/Horses_equipped_smallsaddle/Horse_fullcolor_brown_brownsaddled_smallsaddle.png');
+</script>
+</body>
+</html>

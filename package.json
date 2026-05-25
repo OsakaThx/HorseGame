@@ -1,0 +1,27 @@
+{
+  "name": "horse-racing-legend",
+  "version": "1.0.0",
+  "description": "Horse Racing Legend web + API + Android APK wrapper",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "build:web": "node tools/build-web.js",
+    "android:init": "npx cap add android",
+    "android:sync": "npm run build:web && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "npm run build:web && npx cap sync android && cd android && gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "latest",
+    "@capacitor/cli": "latest",
+    "@capacitor/core": "latest",
+    "bcryptjs": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "^4.18.3",
+    "jsonwebtoken": "latest",
+    "pg": "latest"
+  },
+  "devDependencies": {}
+}

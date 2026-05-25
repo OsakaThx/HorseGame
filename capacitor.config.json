@@ -1,0 +1,8 @@
+{
+  "appId": "com.horseracing.legend",
+  "appName": "Horse Racing Legend",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

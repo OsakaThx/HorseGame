@@ -1,0 +1,814 @@
+/* ============================================================
+   HORSE RACING LEGEND v2 - Estilos
+   1) Reset / variables
+   2) Pantallas, header, botones, tarjetas
+   3) Menú con banner
+   4) ESCENA DE CARRERA (cielo, sol, nubes, lluvia, montañas,
+      gradas, pista, carriles, caballos animados, polvo, meta)
+   5) Tabs, formularios, modales, toasts, logros, recompensa
+   6) Responsive
+   ============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    /* ----- TEMA CORRAL: madera + dorado + verde ----- */
+    --c-wood-dark:#3a2412;     /* madera oscura para fondos */
+    --c-wood:#5a3a1f;          /* madera media */
+    --c-wood-light:#8b6240;    /* madera clara */
+    --c-gold:#d4a256;          /* dorado principal */
+    --c-gold-light:#f5d089;    /* dorado claro / brillos */
+    --c-gold-dark:#a07333;     /* dorado oscuro / bordes */
+    --c-green-deep:#2d4a2b;    /* verde corral oscuro */
+    --c-green:#3d5a3a;         /* verde estandarte */
+    --c-cream:#f5e8d0;         /* crema para textos sobre madera */
+
+    /* Aliases para mantener compatibilidad con CSS existente */
+    --c-fondo:#2a1810; --c-fondo-2:#3a2412; --c-fondo-3:#5a3a1f;
+    --c-prim:#d4a256; --c-sec:#3d5a3a; --c-danger:#c0392b;
+    --c-info:#5a7a5a; --c-purple:#7a4d8a;
+    --c-text:#f5e8d0; --c-muted:#c9b896;
+    --c-card:rgba(58,36,18,0.55); --c-card-hover:rgba(90,58,31,0.75);
+    --radio:10px; --sombra:0 4px 18px rgba(0,0,0,0.55);
+}
+
+/* Fuente moderna y legible (no Georgia, queda muy clásico). Usamos system stack pero con un acento serif solo en títulos. */
+body {
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    background:
+        linear-gradient(180deg, rgba(42,24,16,0.85) 0%, rgba(42,24,16,0.6) 30%, rgba(42,24,16,0.85) 100%),
+        url('assets/fondos/fondohorizontal.png') center top / cover no-repeat,
+        linear-gradient(135deg,var(--c-wood-dark),var(--c-wood));
+    background-attachment: fixed;
+    color:var(--c-text); min-height:100vh; overflow-x:hidden;
+    user-select:none; -webkit-tap-highlight-color:transparent;
+}
+h1,h2,h3,h4 {
+    color:var(--c-gold-light); text-shadow:0 2px 4px rgba(0,0,0,.6);
+    font-family: 'Cinzel', 'Trajan Pro', Georgia, serif; /* serif elegante solo para títulos */
+    letter-spacing:0.5px; font-weight:600;
+}
+
+/* Pantallas */
+.pantalla { display:none; padding:18px; max-width:960px; margin:0 auto; min-height:100vh; animation:fadeIn .35s ease; }
+.pantalla.activa { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+
+/* HEADER: placa de madera con borde dorado tipo letrero de corral */
+.header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 20px;
+    background:
+        linear-gradient(180deg, rgba(245,208,137,.15), transparent 40%),
+        linear-gradient(135deg, var(--c-wood), var(--c-wood-dark));
+    border:3px solid var(--c-gold-dark);
+    border-radius:var(--radio);
+    margin-bottom:18px; flex-wrap:wrap; gap:10px;
+    box-shadow: var(--sombra), inset 0 0 0 1px var(--c-gold), inset 0 2px 6px rgba(245,208,137,.2);
+    position:relative;
+}
+.header::before, .header::after {
+    /* Herraduras decorativas en las esquinas */
+    content:'♘'; position:absolute; top:50%; transform:translateY(-50%);
+    color:var(--c-gold); font-size:1.6em; opacity:.55;
+    text-shadow:0 1px 2px rgba(0,0,0,.6);
+    pointer-events:none;
+}
+.header::before { left:-2px; }
+.header::after { right:-2px; }
+.header h2 { font-size:1.35em; color:var(--c-gold-light); }
+
+/* Dinero: bolsa dorada estilo asset */
+.dinero {
+    background: linear-gradient(180deg, var(--c-gold-light), var(--c-gold) 60%, var(--c-gold-dark));
+    color:#3a2412;
+    padding:8px 18px; border-radius:20px; font-weight:bold;
+    border:2px solid var(--c-gold-dark);
+    box-shadow:0 3px 10px rgba(0,0,0,.4), inset 0 1px 2px rgba(255,255,255,.5);
+    text-shadow:0 1px 0 rgba(255,255,255,.3);
+}
+.dinero::before { content:'💰 '; }
+
+/* Botones: placa de madera con borde dorado (tipo asset) */
+.btn {
+    background:
+        linear-gradient(180deg, rgba(245,208,137,.25), transparent 50%),
+        linear-gradient(135deg, var(--c-gold-light), var(--c-gold) 50%, var(--c-gold-dark));
+    color:#2a1810;
+    border:2px solid var(--c-gold-dark);
+    padding:13px 22px; font-size:.98em; font-weight:bold;
+    border-radius:var(--radio); cursor:pointer;
+    box-shadow: 0 3px 10px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.4), inset 0 -2px 4px rgba(0,0,0,.2);
+    width:100%; margin-top:6px;
+    transition:transform .12s, box-shadow .12s, filter .2s, opacity .2s;
+    font-family:inherit;
+    text-shadow:0 1px 0 rgba(255,255,255,.25);
+    letter-spacing:.3px;
+}
+.btn:hover:not(:disabled) {
+    transform:translateY(-2px);
+    box-shadow:0 6px 16px rgba(212,162,86,.55), inset 0 1px 2px rgba(255,255,255,.5);
+    filter:brightness(1.08);
+}
+.btn:active:not(:disabled) { transform:translateY(0); filter:brightness(.95); }
+.btn:disabled { opacity:.35; cursor:not-allowed; filter:grayscale(.5); }
+
+/* Variantes: cambian el "color del cuero/madera" pero conservan borde dorado */
+.btn-sec     { background:linear-gradient(180deg,rgba(255,255,255,.15),transparent 50%), linear-gradient(135deg,#8b6240,var(--c-wood)); color:var(--c-cream); text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.btn-danger  { background:linear-gradient(180deg,rgba(255,255,255,.15),transparent 50%), linear-gradient(135deg,#a83232,#6e1f1f); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.btn-success { background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 50%), linear-gradient(135deg,#5e8b58,var(--c-green-deep)); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.btn-purple  { background:linear-gradient(180deg,rgba(255,255,255,.15),transparent 50%), linear-gradient(135deg,#9b6cb5,#5d3970); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.btn-pequeño { padding:8px 14px; font-size:.85em; width:auto; margin-top:0; }
+
+/* Tarjetas: placa de madera con doble borde dorado */
+.tarjeta {
+    background:
+        linear-gradient(180deg, rgba(245,208,137,.08), transparent 40%),
+        linear-gradient(135deg, rgba(90,58,31,.85), rgba(58,36,18,.85));
+    border:2px solid var(--c-gold-dark);
+    border-radius:var(--radio); padding:15px;
+    margin-bottom:14px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.45), inset 0 0 0 1px rgba(245,208,137,.25);
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    backdrop-filter:blur(4px);
+}
+.tarjeta:hover {
+    border-color:var(--c-gold-light);
+    box-shadow:0 5px 18px rgba(212,162,86,.4), inset 0 0 0 1px var(--c-gold);
+}
+.tarjeta.seleccionada {
+    border-color:var(--c-gold-light);
+    box-shadow:0 0 24px rgba(245,208,137,.55), inset 0 0 0 2px var(--c-gold);
+    transform:translateY(-1px);
+}
+.tarjeta-titulo { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px; }
+.tarjeta-titulo h3 { font-size:1.1em; display:flex; align-items:center; gap:8px; }
+
+.badge { background:var(--c-info); color:#fff; padding:3px 10px; border-radius:12px; font-size:.78em; font-weight:bold; }
+.badge-prim { background:var(--c-prim); color:#2c2c2c; }
+.badge-sec { background:var(--c-sec); }
+.badge-danger { background:var(--c-danger); }
+.badge-purple { background:var(--c-purple); }
+
+/* Stats */
+.stat-fila { display:flex; align-items:center; margin:4px 0; gap:8px; font-size:.88em; }
+.stat-nombre { width:110px; color:var(--c-muted); }
+.stat-barra { flex:1; height:12px; background:rgba(0,0,0,.35); border-radius:6px; overflow:hidden; }
+.stat-relleno { height:100%; background:linear-gradient(90deg,var(--c-sec),var(--c-prim)); transition:width .5s; }
+.stat-valor { width:40px; text-align:right; font-weight:bold; }
+.condicion-fila .stat-relleno { background:linear-gradient(90deg,#e74c3c,#f5b041,#27ae60); }
+
+/* Avatar */
+.horse-avatar {
+    width:48px; height:48px; border-radius:50%;
+    background:linear-gradient(135deg,var(--c-fondo-3),var(--c-fondo-2));
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:1.7em; flex-shrink:0; overflow:hidden; box-shadow:var(--sombra);
+}
+.horse-avatar img { width:100%; height:100%; object-fit:cover; }
+.horse-avatar.sm { width:32px; height:32px; font-size:1.1em; }
+
+/* ============================================================
+   MENÚ PRINCIPAL: corral con fondo del establo
+   ============================================================ */
+#pantalla-menu {
+    text-align:center; padding:0; max-width:100%;
+    background:
+        linear-gradient(180deg, rgba(42,24,16,0.25) 0%, rgba(42,24,16,0.15) 40%, rgba(42,24,16,0.85) 100%),
+        url('assets/fondos/fondovertical.png') center top / cover no-repeat;
+    min-height:100vh;
+    position:relative;
+}
+#pantalla-menu::after {
+    /* Viñeta dorada en bordes */
+    content:''; position:absolute; inset:0; pointer-events:none;
+    box-shadow: inset 0 0 80px 20px rgba(0,0,0,.55), inset 0 0 0 4px var(--c-gold-dark);
+}
+#pantalla-menu > * { position:relative; z-index:2; max-width:480px; margin-left:auto; margin-right:auto; }
+
+.menu-banner {
+    position:relative; padding:40px 20px 24px; margin:0 14px 22px;
+    /* Cartel de madera con horseshoe arriba */
+    background:
+        linear-gradient(180deg, rgba(245,208,137,.18), transparent 50%),
+        linear-gradient(135deg, var(--c-wood), var(--c-wood-dark));
+    border:3px solid var(--c-gold-dark);
+    border-radius:14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.6), inset 0 0 0 1px var(--c-gold), inset 0 2px 6px rgba(245,208,137,.25);
+    overflow:visible;
+    margin-top:30px;
+}
+.menu-banner::before {
+    /* Herradura dorada arriba del cartel */
+    content:'♘'; position:absolute; top:-28px; left:50%; transform:translateX(-50%);
+    font-size:3em; color:var(--c-gold-light);
+    text-shadow:0 3px 8px rgba(0,0,0,.7), 0 0 20px rgba(245,208,137,.6);
+    background: radial-gradient(circle, var(--c-wood-dark) 40%, transparent 70%);
+    width:60px; height:60px; line-height:60px; border-radius:50%;
+    border:3px solid var(--c-gold-dark);
+}
+.menu-banner h1 {
+    font-size:2.6em; color:var(--c-gold-light); position:relative; z-index:2;
+    text-shadow:0 3px 10px rgba(0,0,0,.8), 0 0 24px rgba(245,208,137,.4);
+    margin-bottom:6px;
+}
+.menu-banner .subtitulo {
+    color:var(--c-cream); margin-top:6px; position:relative; z-index:2;
+    font-style:italic; font-size:1em;
+}
+.menu-botones { max-width:380px; margin:0 auto; display:flex; flex-direction:column; gap:12px; padding:0 14px; }
+.menu-info { display:flex; justify-content:center; gap:10px; margin:20px 14px; flex-wrap:wrap; }
+.menu-info > div {
+    background:linear-gradient(135deg,var(--c-wood),var(--c-wood-dark));
+    border:2px solid var(--c-gold-dark);
+    padding:8px 16px; border-radius:18px; font-size:.92em;
+    color:var(--c-gold-light); font-weight:bold;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+
+/* ============================================================
+   ESCENA DE CARRERA
+   ============================================================ */
+.escena-carrera {
+    position:relative; width:100%; height:480px;
+    border-radius:var(--radio); overflow:hidden;
+    border:4px solid var(--c-gold-dark);
+    box-shadow: var(--sombra), inset 0 0 0 1px var(--c-gold);
+    margin-bottom:15px;
+}
+
+/* ============================================================
+   PANTALLA DE CARGA: usa el fondo horizontal del corral
+   ============================================================ */
+.race-loading {
+    position:fixed; inset:0; z-index:1000;
+    background:
+        linear-gradient(180deg, rgba(42,24,16,0.55) 0%, rgba(42,24,16,0.25) 40%, rgba(42,24,16,0.85) 100%),
+        url('assets/fondos/fondohorizontal.png') center center / cover no-repeat;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:20px;
+    animation: fadeIn .25s ease;
+}
+.race-loading.fadeout { animation: fadeOut .35s ease forwards; }
+@keyframes fadeOut { to { opacity:0; } }
+.race-loading h2 {
+    font-size:2.2em; color:var(--c-gold-light);
+    text-shadow:0 4px 14px rgba(0,0,0,.85), 0 0 28px rgba(245,208,137,.5);
+    letter-spacing:1.5px;
+}
+.race-loading .info {
+    background:linear-gradient(135deg,var(--c-wood),var(--c-wood-dark));
+    border:3px solid var(--c-gold-dark);
+    box-shadow:0 6px 18px rgba(0,0,0,.6), inset 0 0 0 1px var(--c-gold);
+    padding:12px 28px; border-radius:10px;
+    color:var(--c-cream); font-size:1.1em;
+}
+.race-loading .gate {
+    /* Puerta de salida estilo barreras */
+    width:60%; max-width:420px; height:6px;
+    background:linear-gradient(90deg,var(--c-gold-dark),var(--c-gold),var(--c-gold-dark));
+    border-radius:3px; box-shadow:0 0 18px rgba(245,208,137,.7);
+    animation: gateOpen 1.6s ease-in;
+}
+@keyframes gateOpen {
+    0% { transform:scaleX(1); }
+    70% { transform:scaleX(1); }
+    100% { transform:scaleX(0); }
+}
+
+/* Cielo */
+.cielo {
+    position:absolute; inset:0 0 55% 0;
+    background:linear-gradient(180deg,#87CEEB 0%,#B0E0E6 70%,#FFE4B5 100%);
+    transition:background .5s;
+}
+.escena-carrera[data-clima="lluvioso"] .cielo { background:linear-gradient(180deg,#4a5568,#718096 80%,#a0aec0); }
+.escena-carrera[data-clima="nublado"] .cielo { background:linear-gradient(180deg,#cbd5e0,#e2e8f0 80%,#edf2f7); }
+
+/* Sol */
+.sol {
+    position:absolute; top:30px; right:50px; width:60px; height:60px;
+    border-radius:50%; background:radial-gradient(circle,#FFEB3B,#FFC107);
+    box-shadow:0 0 60px rgba(255,235,59,.7),0 0 100px rgba(255,193,7,.4);
+    animation:sol-pulse 3s ease-in-out infinite;
+}
+@keyframes sol-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.1);} }
+.escena-carrera[data-clima="lluvioso"] .sol,
+.escena-carrera[data-clima="nublado"] .sol { display:none; }
+
+/* Nubes */
+.nube { position:absolute; background:#fff; border-radius:50px; opacity:.85;
+        box-shadow:25px 0 0 -5px #fff,-25px 0 0 -10px #fff; }
+.nube-1 { width:80px; height:25px; top:40px; left:10%; animation:flotar 25s linear infinite; }
+.nube-2 { width:100px; height:30px; top:70px; left:40%; animation:flotar 35s linear infinite; animation-delay:-10s; }
+.nube-3 { width:70px; height:22px; top:25px; left:70%; animation:flotar 30s linear infinite; animation-delay:-20s; }
+@keyframes flotar { from{transform:translateX(-200px);} to{transform:translateX(calc(100vw + 200px));} }
+.escena-carrera[data-clima="lluvioso"] .nube { background:#4a5568; opacity:.9; }
+.escena-carrera[data-clima="nublado"] .nube { background:#f8f9fa; }
+
+/* Lluvia */
+.lluvia { position:absolute; inset:0; pointer-events:none; display:none; overflow:hidden; }
+.escena-carrera[data-clima="lluvioso"] .lluvia { display:block; }
+.gota {
+    position:absolute; width:1.5px; height:14px;
+    background:linear-gradient(180deg,transparent,rgba(174,194,224,.7));
+    animation:caer linear infinite;
+}
+@keyframes caer { from{transform:translateY(-50px);} to{transform:translateY(500px);} }
+
+/* Montañas (zigzag con gradients) */
+.montañas {
+    position:absolute; left:0; right:0; top:30%; height:25%;
+    background:
+        linear-gradient(135deg,transparent 49%,#5d6d7e 50%,transparent 51%) 0 0/120px 100% repeat-x,
+        linear-gradient(225deg,transparent 49%,#5d6d7e 50%,transparent 51%) 60px 0/120px 100% repeat-x;
+    opacity:.55;
+}
+
+/* Gradas */
+.gradas {
+    position:absolute; left:0; right:0; bottom:55%; height:48px;
+    background:
+        linear-gradient(180deg,transparent,rgba(0,0,0,.4)),
+        repeating-linear-gradient(90deg,#34495e 0 6px,#2c3e50 6px 8px,#4a5568 8px 14px);
+    border-bottom:4px solid #1a202c;
+}
+.gradas::after {
+    content:''; position:absolute; bottom:4px; left:0; right:0; height:14px;
+    background:repeating-radial-gradient(circle at 5px 14px,#2d3748 0 4px,transparent 4px 12px);
+    background-size:12px 14px; opacity:.85;
+}
+
+/* Pista */
+.pista {
+    position:absolute; left:0; right:0; bottom:0; height:55%;
+    background:linear-gradient(180deg,#5cb85c,#4a8b3a);
+    /* overflow visible para que los tooltips de los runners superiores no se recorten */
+}
+.escena-carrera[data-terreno="arena"] .pista { background:linear-gradient(180deg,#d4a574,#b8895a); }
+.escena-carrera[data-terreno="tierra"] .pista { background:linear-gradient(180deg,#8b6f47,#6f5530); }
+.pista::before {
+    content:''; position:absolute; left:0; right:0; top:0; height:4px;
+    background:#fff; opacity:.7; box-shadow:0 6px 0 rgba(255,255,255,.5);
+}
+
+/* Carriles */
+.carriles { position:absolute; inset:12px 0 0 0; display:flex; flex-direction:column; padding:0 4px; }
+.carril {
+    flex:1; position:relative; margin:1px 0;
+    border-bottom:1px dashed rgba(255,255,255,.25);
+}
+.carril:last-child { border-bottom:none; }
+.carril-info {
+    position:absolute; left:6px; top:2px; z-index:3;
+    background:rgba(0,0,0,.6); color:#fff;
+    padding:2px 8px; border-radius:10px; font-size:.7em; font-weight:bold;
+    pointer-events:none; white-space:nowrap; max-width:110px;
+    overflow:hidden; text-overflow:ellipsis;
+}
+.carril-info.tu { background:var(--c-prim); color:#2c2c2c; }
+
+/* Runner */
+.runner {
+    position:absolute; top:50%; transform:translate(0,-50%);
+    font-size:1.7em; transition:left .18s linear; will-change:left; z-index:2;
+    filter:drop-shadow(2px 3px 3px rgba(0,0,0,.4));
+}
+.runner img { width:38px; height:38px; object-fit:contain; display:block; }
+.runner-inner { display:inline-block; animation:galopar .18s infinite; }
+@keyframes galopar {
+    0%,100%{transform:translateY(0) rotate(-3deg);}
+    25%{transform:translateY(-2px) rotate(2deg);}
+    50%{transform:translateY(0) rotate(-2deg);}
+    75%{transform:translateY(-3px) rotate(3deg);}
+}
+
+/* Polvo (detrás del caballo que va hacia la izquierda) */
+.runner::before {
+    content:'💨'; position:absolute; left:100%; right:auto; top:50%;
+    transform:translateY(-50%) scale(.7) scaleX(-1); opacity:.55;
+    animation:polvo .5s infinite; margin-left:-4px; filter:blur(.5px);
+}
+@keyframes polvo {
+    0%{opacity:.6;transform:translateY(-50%) scale(.4);}
+    100%{opacity:0;transform:translate(20px,-50%) scale(1);}
+}
+
+/* Líder */
+.runner.lider::after {
+    content:'👑'; position:absolute; bottom:100%; left:50%;
+    transform:translateX(-50%); font-size:.6em;
+    animation:bounce 1s infinite;
+}
+@keyframes bounce { 0%,100%{transform:translate(-50%,0);} 50%{transform:translate(-50%,-3px);} }
+
+/* Meta */
+.meta-final {
+    position:absolute; left:10px; right:auto; top:0; bottom:0; width:16px; z-index:1;
+    background:repeating-conic-gradient(black 0 25%,white 0 50%) 0 0/16px 16px;
+    box-shadow:0 0 15px rgba(0,0,0,.5); border-right:2px solid #fff;
+}
+.meta-final::before {
+    content:'🏁'; position:absolute; top:-22px; left:50%;
+    transform:translateX(-50%); font-size:1.6em;
+    animation:ondear 1.5s ease-in-out infinite;
+}
+@keyframes ondear { 0%,100%{transform:translateX(-50%) rotate(-5deg);} 50%{transform:translateX(-50%) rotate(5deg);} }
+
+/* HUD */
+.hud-carrera {
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--c-card); padding:10px 15px; border-radius:var(--radio);
+    margin-bottom:12px; flex-wrap:wrap; gap:8px;
+}
+.hud-carrera .pos-actual { font-size:1.3em; font-weight:bold; color:var(--c-prim); }
+
+/* Resultados */
+.resultado-fila {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px; border-bottom:1px solid rgba(255,255,255,.08); gap:8px;
+}
+.resultado-fila.tu { background:rgba(245,176,65,.18); border-radius:8px; }
+.medalla { font-size:1.4em; margin-right:8px; }
+
+/* Tabs */
+.tabs { display:flex; gap:5px; margin-bottom:15px; flex-wrap:wrap; }
+.tab {
+    flex:1; min-width:90px; padding:9px;
+    background:var(--c-card); border:none; color:var(--c-text);
+    cursor:pointer; border-radius:8px; font-weight:bold; font-size:.85em;
+    transition:background .2s; font-family:inherit;
+}
+.tab.activa { background:var(--c-prim); color:#2c2c2c; }
+
+/* Forms */
+.form-grupo { margin-bottom:12px; }
+.form-grupo label { display:block; margin-bottom:5px; color:var(--c-muted); font-size:.88em; }
+.form-grupo input, .form-grupo select, .form-grupo textarea {
+    width:100%; padding:10px 12px;
+    background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.15);
+    border-radius:8px; color:var(--c-text); font-size:.95em; font-family:inherit;
+}
+.form-grupo input:focus, .form-grupo select:focus, .form-grupo textarea:focus { outline:none; border-color:var(--c-prim); }
+.form-grupo input[type="range"] { padding:0; }
+.form-grupo input[type="color"] { height:42px; padding:4px; }
+.form-grupo .ayuda { font-size:.78em; color:var(--c-muted); margin-top:4px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+
+/* Logros */
+.logro {
+    display:flex; align-items:center; gap:12px;
+    background:var(--c-card); border-radius:var(--radio); padding:12px;
+    margin-bottom:10px;
+}
+.logro.completado { background:rgba(39,174,96,.18); border:1px solid rgba(39,174,96,.4); }
+.logro-icon { font-size:2em; flex-shrink:0; }
+.logro.bloqueado .logro-icon { filter:grayscale(1) opacity(.4); }
+.logro-info { flex:1; }
+.logro-info h4 { font-size:1em; }
+.logro-info p { font-size:.82em; color:var(--c-muted); }
+
+/* Toast */
+#toast {
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--c-info); color:#fff; padding:12px 22px; border-radius:25px;
+    box-shadow:var(--sombra); z-index:10000; opacity:0; pointer-events:none;
+    transition:opacity .3s,transform .3s; max-width:90%; text-align:center; font-weight:bold;
+}
+#toast.visible { opacity:1; transform:translateX(-50%) translateY(-10px); }
+#toast.error { background:var(--c-danger); }
+#toast.exito { background:var(--c-sec); }
+
+/* Modal */
+.modal-fondo {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+    z-index:9999; justify-content:center; align-items:center; padding:20px;
+    animation:fadeIn .2s;
+}
+.modal-fondo.visible { display:flex; }
+.modal {
+    background:linear-gradient(135deg,var(--c-fondo-2),var(--c-fondo-3));
+    padding:25px; border-radius:var(--radio);
+    max-width:520px; width:100%; max-height:90vh; overflow-y:auto;
+    border:1px solid rgba(255,255,255,.1);
+}
+.modal h3 { margin-bottom:12px; color:var(--c-prim); text-align:center; }
+.modal-botones { display:flex; gap:10px; margin-top:15px; }
+.modal-botones .btn { margin:0; }
+
+/* Recompensa */
+.recompensa-diaria {
+    background:linear-gradient(135deg,var(--c-prim),#f39c12); color:#2c2c2c;
+    padding:15px; border-radius:var(--radio); text-align:center;
+    margin-bottom:15px; cursor:pointer;
+    box-shadow:0 0 25px rgba(245,176,65,.5);
+    animation:shine 2s ease-in-out infinite;
+}
+@keyframes shine { 0%,100%{box-shadow:0 0 25px rgba(245,176,65,.5);} 50%{box-shadow:0 0 40px rgba(245,176,65,.8);} }
+
+/* Admin */
+.admin-flag {
+    display:inline-block; background:var(--c-purple); color:#fff;
+    padding:2px 8px; border-radius:8px; font-size:.7em; font-weight:bold;
+    vertical-align:middle;
+}
+.sexo-icono { font-size:.9em; }
+.sexo-icono.macho { color:#5dade2; }
+.sexo-icono.hembra { color:#f1948a; }
+
+/* Utilidades */
+.muted { color:var(--c-muted); font-size:.85em; }
+.mt-10 { margin-top:10px; }
+.mb-10 { margin-bottom:10px; }
+.text-center { text-align:center; }
+.flex-row { display:flex; gap:10px; flex-wrap:wrap; }
+.flex-row > * { flex:1; min-width:110px; }
+
+/* ============================================================
+   TOOLTIP DE STATS (mini-card al hacer hover)
+   ============================================================ */
+.tooltip-stats {
+    position:absolute; bottom:calc(100% + 8px); left:50%;
+    transform:translateX(-50%) scale(0.85);
+    background:linear-gradient(135deg,#1a2a35,#2c5364);
+    border:1px solid rgba(245,176,65,.5);
+    border-radius:10px; padding:10px 12px;
+    min-width:180px; width:max-content; max-width:220px;
+    box-shadow:0 6px 20px rgba(0,0,0,.6);
+    opacity:0; pointer-events:none;
+    transition:opacity .15s, transform .15s;
+    z-index:50; font-size:.78em; color:var(--c-text);
+    text-align:left;
+}
+.tooltip-stats::after {
+    /* Flechita inferior */
+    content:''; position:absolute; top:100%; left:50%;
+    transform:translateX(-50%);
+    border:6px solid transparent;
+    border-top-color:rgba(245,176,65,.5);
+}
+.tt-head { font-size:1em; margin-bottom:2px; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.tt-head .badge { font-size:.75em; padding:1px 6px; }
+.tt-sub { color:var(--c-muted); font-size:.8em; margin-bottom:6px; }
+.tt-stat {
+    display:flex; align-items:center; gap:6px; margin:2px 0; font-size:.85em;
+}
+.tt-stat > span { width:42px; color:var(--c-muted); }
+.tt-stat > b { width:24px; text-align:right; font-size:.85em; }
+.tt-bar { flex:1; height:6px; background:rgba(0,0,0,.4); border-radius:3px; overflow:hidden; }
+.tt-bar > div { height:100%; background:linear-gradient(90deg,var(--c-sec),var(--c-prim)); }
+
+/* Mostrar tooltip al hover sobre el carril, runner o fila */
+.carril:hover .tooltip-stats,
+.runner:hover .tooltip-stats,
+.tt-host:hover .tooltip-stats {
+    opacity:1;
+    transform:translateX(-50%) scale(1);
+}
+
+/* En filas de resultados, posicionar el tooltip pegado al nombre */
+.tt-host { position:relative; cursor:help; }
+.resultado-fila .tooltip-stats { left:0; transform:translateX(0) scale(.85); }
+.resultado-fila .tt-host:hover .tooltip-stats { transform:translateX(0) scale(1); }
+.resultado-fila .tooltip-stats::after { left:30px; }
+
+/* En móvil: tap muestra (usamos :active como alternativa) */
+@media (hover:none) {
+    .carril:active .tooltip-stats,
+    .tt-host:active .tooltip-stats {
+        opacity:1; transform:translateX(-50%) scale(1);
+    }
+    .resultado-fila .tt-host:active .tooltip-stats { transform:translateX(0) scale(1); }
+}
+
+/* ============================================================
+   SPRITES ANIMADOS (canvas con pixel-art)
+   ============================================================ */
+canvas.sprite-canvas {
+    image-rendering:pixelated;
+    image-rendering:-moz-crisp-edges;
+    display:inline-block;
+    vertical-align:middle;
+}
+
+/* Showcase del caballo seleccionado en "Mis Caballos" */
+.horse-showcase {
+    display:flex; gap:18px; align-items:center;
+    background:linear-gradient(135deg,#1a2a35,#243b4a);
+    border:2px solid rgba(245,176,65,.4);
+    border-radius:14px; padding:18px; margin-bottom:18px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+}
+.showcase-sprite {
+    width:200px; height:200px;
+    background:radial-gradient(circle, #5cb85c 0%, #3d8a3a 70%);
+    border-radius:12px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    box-shadow:inset 0 -10px 20px rgba(0,0,0,.3);
+    position:relative; overflow:hidden;
+}
+.showcase-sprite::before {
+    /* Suelo con textura */
+    content:''; position:absolute; left:0; right:0; bottom:0; height:40%;
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.2));
+    pointer-events:none;
+}
+.showcase-sprite canvas.sprite-canvas { width:160px !important; height:160px !important; }
+.showcase-info { flex:1; min-width:0; }
+.showcase-info h3 { margin:0 0 4px; font-size:1.4em; color:var(--c-prim); }
+.showcase-anims { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+
+/* Preview de cría: caballo grande junto a sus stats */
+.cria-preview { display:flex; gap:12px; align-items:flex-start; margin:10px 0; }
+.cria-sprite {
+    width:140px; height:140px; flex-shrink:0;
+    background:radial-gradient(circle,#7ab87a 0%,#4a8b3a 80%);
+    border-radius:10px; display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 -8px 16px rgba(0,0,0,.25);
+}
+.cria-sprite canvas.sprite-canvas { width:110px !important; height:110px !important; }
+.cria-preview > .tarjeta { flex:1; margin:0; }
+
+/* Runners en carrera: sprites más grandes */
+.runner .runner-inner canvas.sprite-canvas {
+    width:72px !important; height:72px !important;
+}
+.runner-inner:has(canvas.sprite-canvas) { animation:none !important; }
+
+/* === CARRERA CARD (nuevo diseño con banner) === */
+.carrera-card {
+    border-radius:12px; overflow:hidden;
+    background:var(--c-bg2); border:1px solid var(--c-borde);
+    margin-bottom:14px; transition:transform .15s, box-shadow .15s;
+}
+.carrera-card:hover:not(.inactiva) { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.3); }
+.carrera-card.inactiva { opacity:.5; filter:grayscale(.4); }
+.carrera-banner {
+    height:80px; position:relative; display:flex; align-items:flex-end;
+    background-size:cover; background-position:center;
+}
+.carrera-banner-overlay {
+    width:100%; padding:10px 14px; display:flex; align-items:center; gap:8px;
+    background:linear-gradient(transparent,rgba(0,0,0,.65));
+}
+.carrera-banner-overlay h3 { flex:1; margin:0; color:#fff; font-size:1.05em; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.carrera-tipo {
+    font-size:.65em; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    padding:3px 8px; border-radius:4px; color:#fff;
+}
+.carrera-nivel-badge {
+    font-size:.75em; font-weight:600; color:#fff; background:rgba(255,255,255,.15);
+    padding:2px 8px; border-radius:4px; backdrop-filter:blur(2px);
+}
+.carrera-details { padding:12px 14px; }
+.carrera-stats-row { display:flex; gap:8px; margin-bottom:8px; }
+.carrera-stat { flex:1; text-align:center; }
+.carrera-stat span { display:block; font-size:.7em; color:var(--c-muted); text-transform:uppercase; }
+.carrera-stat b { font-size:.9em; }
+.premio-gold { color:#f1c40f; }
+.btn-correr-full {
+    width:100%; margin-top:6px; padding:10px; font-size:.95em;
+    border-radius:8px; font-weight:700; letter-spacing:.03em;
+}
+
+/* === HORSE SELECTION CARD (modal preview) === */
+.horse-select-card {
+    display:flex; gap:14px; background:var(--c-bg); border-radius:10px;
+    padding:12px; border:1px solid var(--c-borde);
+}
+.hsc-sprite {
+    width:100px; height:100px; flex-shrink:0;
+    background:radial-gradient(circle,#7ab87a 0%,#4a8b3a 80%);
+    border-radius:10px; display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 -6px 12px rgba(0,0,0,.25);
+}
+.hsc-sprite canvas.sprite-canvas { width:80px !important; height:80px !important; }
+.hsc-info { flex:1; min-width:0; }
+.hsc-info h3 { margin:0 0 4px; font-size:1em; }
+.sel-stat { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.sel-stat span { width:52px; font-size:.72em; color:var(--c-muted); flex-shrink:0; }
+.sel-bar { flex:1; height:6px; background:var(--c-bg2); border-radius:3px; overflow:hidden; }
+.sel-bar > div { height:100%; background:var(--c-prim); border-radius:3px; transition:width .2s; }
+.sel-bar.cond > div { background:#27ae60; }
+.sel-stat b { width:28px; text-align:right; font-size:.75em; }
+
+/* === STAMINA INDICATOR (bar below horse in race) === */
+.stamina-indicator {
+    position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
+    width:40px; height:3px; border-radius:2px;
+    background:#2ecc71; transition: width .15s, background .15s;
+}
+
+/* === TIRED FX === */
+.tired-fx {
+    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    pointer-events:none; width:0; height:0;
+}
+.runner.cansado .tired-fx::before {
+    content:'💦'; position:absolute; font-size:14px; animation:tired-bob .6s infinite alternate;
+}
+/* Blue tint when exhausted, orange when low stamina */
+.runner.cansado .runner-inner { filter:hue-rotate(200deg) saturate(1.6) brightness(.85); animation:tired-wobble .5s infinite alternate !important; }
+.runner.fatiga-baja .runner-inner { filter:sepia(.4) hue-rotate(10deg) saturate(1.2); animation:tired-wobble .9s infinite alternate !important; }
+@keyframes tired-bob { from{transform:translateY(0)} to{transform:translateY(-4px)} }
+@keyframes tired-wobble { from{transform:rotate(-2deg)} to{transform:rotate(2deg)} }
+
+/* === CARRIL INFO with class badge === */
+.carril-clase { font-size:.8em; margin-right:2px; }
+
+/* === EQUIPMENT UI === */
+.equip-slot {
+    display:flex; align-items:center; gap:8px; padding:8px 0;
+    border-bottom:1px solid var(--c-borde);
+}
+.equip-slot:last-child { border-bottom:none; }
+.equip-slot-icon { font-size:1.2em; width:28px; text-align:center; }
+.equip-slot-name { font-weight:600; width:80px; font-size:.85em; }
+.equip-slot-value { flex:1; font-size:.85em; }
+.equip-inv-item { border-left:3px solid var(--c-prim); }
+
+/* === EQUIPMENT MINI SLOTS in horse card === */
+.equip-mini-row {
+    display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;
+}
+.equip-mini-slot {
+    flex:1; min-width:80px; display:flex; align-items:center; gap:4px;
+    background:var(--c-bg); border:1px dashed var(--c-borde); border-radius:8px;
+    padding:5px 8px; cursor:pointer; transition:all .15s;
+}
+.equip-mini-slot:hover { border-color:var(--c-prim); background:var(--c-prim)10; }
+.equip-mini-slot.equipado { border-style:solid; border-color:var(--c-sec); }
+.equip-mini-icon { font-size:1em; }
+.equip-mini-name { font-size:.68em; color:var(--c-muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.equip-mini-name.eq-active { color:var(--c-texto); font-weight:600; }
+
+/* === PLAYER LEVEL BAR (menu) === */
+.menu-nivel-row {
+    display:flex; align-items:center; gap:8px;
+    padding:6px 0; margin-bottom:4px;
+}
+.menu-nivel-badge {
+    background:linear-gradient(135deg,#f39c12,#e74c3c);
+    color:#fff; font-weight:700; font-size:.8em;
+    padding:3px 10px; border-radius:12px; white-space:nowrap;
+}
+.menu-xp-bar {
+    flex:1; height:8px; background:rgba(255,255,255,.1);
+    border-radius:4px; overflow:hidden;
+}
+.menu-xp-fill {
+    height:100%;
+    background:linear-gradient(90deg,#f39c12,#e74c3c);
+    border-radius:4px; transition:width .4s ease;
+}
+
+/* === LEVEL UP MODAL === */
+.level-up-body { text-align:center; padding:8px 0; }
+.level-up-number {
+    font-size:3em; font-weight:700; line-height:1;
+    background:linear-gradient(135deg,#f39c12,#e74c3c);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 4px rgba(243,156,18,.4));
+}
+.level-up-prizes { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.prize-item {
+    background:var(--c-bg); border:1px solid var(--c-sec);
+    border-radius:8px; padding:8px 12px; font-weight:600;
+}
+
+/* === SKIN GRID (admin) === */
+.skin-grid {
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:8px; margin-top:10px; max-height:300px; overflow-y:auto; padding:4px;
+}
+.skin-option {
+    background:var(--c-bg); border:2px solid var(--c-borde); border-radius:8px;
+    padding:6px; text-align:center; cursor:pointer; transition:all .15s;
+}
+.skin-option:hover { border-color:var(--c-prim); transform:scale(1.05); }
+.skin-option.active { border-color:var(--c-prim); background:var(--c-prim)10; box-shadow:0 0 8px var(--c-prim)44; }
+.skin-preview { height:60px; display:flex; align-items:center; justify-content:center; }
+.skin-preview canvas.sprite-canvas { width:50px !important; height:50px !important; }
+.skin-label { display:block; font-size:.6em; color:var(--c-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+@media (max-width:600px) {
+    .pantalla { padding:12px; }
+    .menu-banner h1 { font-size:1.85em; }
+    .stat-nombre { width:90px; font-size:.78em; }
+    .escena-carrera { height:380px; }
+    .runner { font-size:1.4em; }
+    .runner img { width:30px; height:30px; }
+    .runner .runner-inner canvas.sprite-canvas { width:48px !important; height:48px !important; }
+    .header h2 { font-size:1.05em; }
+    .tab { min-width:60px; padding:8px 6px; font-size:.75em; }
+    .grid-2, .grid-3 { grid-template-columns:1fr; }
+    .horse-showcase { flex-direction:column; text-align:center; }
+    .showcase-sprite { width:160px; height:160px; }
+    .cria-preview { flex-direction:column; }
+    .cria-sprite { width:100%; height:120px; }
+    .horse-select-card { flex-direction:column; align-items:center; }
+    .hsc-sprite { width:80px; height:80px; }
+    .carrera-stats-row { flex-wrap:wrap; }
+    .carrera-stat { min-width:30%; }
+}
