@@ -515,15 +515,16 @@ const UI = {
         const cont = document.getElementById('lista-carreras');
         const STAT_NOMBRES = { velocidad:'Vel', velocidadPunta:'Punta', estamina:'Estam', salto:'Salto', aceleracion:'Acel' };
         const TIPO_COLORES = { recta:'#3498db', obstaculos:'#e67e22', curvas:'#9b59b6' };
+        const caballosDisponibles = Game.jugador.caballos.filter(h => h.condicion >= 10);
+        const sinCaballos = caballosDisponibles.length === 0;
         cont.innerHTML = DATA.carreras.map(ca => {
             const bloq = ca.nivel_minimo > niv;
             const sd = Game.jugador.dinero < ca.costo_inscripcion;
-            const sc = c && c.condicion < 10;
-            const dis = bloq||sd||sc||!c;
+            const dis = bloq || sd || sinCaballos;
             let estado = '';
             if (bloq) estado = `Requiere Nv.${ca.nivel_minimo}`;
             else if (sd) estado = 'Dinero insuficiente';
-            else if (sc) estado = 'Caballo agotado';
+            else if (sinCaballos) estado = 'Todos los caballos agotados';
             const topStats = Object.entries(ca.stat_weights)
                 .sort((a,b) => b[1]-a[1]).slice(0,2)
                 .map(([k,v]) => `${STAT_NOMBRES[k]||k} ${Math.round(v*100)}%`).join(' · ');
@@ -548,7 +549,13 @@ const UI = {
                         <div class="carrera-stat"><span>1° Premio</span><b class="premio-gold">$${ca.premios[0]||0}</b></div>
                         <div class="carrera-stat"><span>Clave</span><b>${topStats}</b></div>
                     </div>
-                    <button class="btn ${dis?'':'btn-success'} btn-correr-full" ${dis?'disabled':''} onclick="UI.iniciarCarrera('${ca.id}')">${estado||'Inscribirse y Correr'}</button>
+                    ${dis ? 
+                        `<button class="btn btn-correr-full" disabled>${estado}</button>` :
+                        (c && c.condicion >= 10 ? 
+                            `<button class="btn btn-success btn-correr-full" onclick="UI.iniciarCarrera('${ca.id}')">🏇 Inscribirse y Correr</button>` :
+                            `<button class="btn btn-warning btn-correr-full" onclick="UI._seleccionarCaballoParaCarrera('${ca.id}')">Seleccionar caballo disponible</button>`
+                        )
+                    }
                 </div>
             </div>`;
         }).join('');
@@ -602,6 +609,51 @@ const UI = {
                 ${equipList ? `<p class="muted" style="margin-top:4px">${equipList}</p>` : '<p class="muted" style="margin-top:4px">Sin equipo</p>'}
             </div>
         </div>`;
+    },
+
+    _seleccionarCaballoParaCarrera(carreraId) {
+        const ca = DATA.carreras.find(x => x.id === carreraId);
+        if (!ca) return;
+        const caballosDisponibles = Game.jugador.caballos.filter(h => h.condicion >= 10);
+        if (caballosDisponibles.length === 0) {
+            this.toast('Todos los caballos están agotados', 'error');
+            return;
+        }
+        
+        this.modal('Seleccionar caballo para la carrera', `
+            <p class="muted mb-10">Carrera: <b>${ca.nombre}</b> · ${ca.distancia}m · Inscripción: <b>$${ca.costo_inscripcion}</b></p>
+            <select id="horse-race-select" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--c-borde);background:var(--c-bg2);color:var(--c-texto)">
+                ${caballosDisponibles.map(h => {
+                    const raza = DATA.razas[h.raza] || {};
+                    return `<option value="${h.id}">${raza.emoji||'🐴'} ${h.nombre} (Nv.${h.nivel}, Cond. ${Math.round(h.condicion)}%)</option>`;
+                }).join('')}
+            </select>
+            <div id="horse-race-preview" style="margin-top:10px"></div>
+        `, () => {
+            const selId = document.getElementById('horse-race-select').value;
+            const caballo = Game.jugador.caballos.find(h => h.id === selId);
+            if (caballo) {
+                Game.jugador.caballoSeleccionadoId = caballo.id;
+                this.iniciarCarrera(carreraId);
+            }
+        });
+        
+        // Preview inicial
+        setTimeout(() => {
+            const selId = document.getElementById('horse-race-select').value;
+            const caballo = Game.jugador.caballos.find(h => h.id === selId);
+            if (caballo) {
+                document.getElementById('horse-race-preview').innerHTML = this._horseSelectCardHTML(caballo);
+            }
+        }, 50);
+        
+        // Update preview on change
+        document.getElementById('horse-race-select').addEventListener('change', (e) => {
+            const caballo = Game.jugador.caballos.find(h => h.id === e.target.value);
+            if (caballo) {
+                document.getElementById('horse-race-preview').innerHTML = this._horseSelectCardHTML(caballo);
+            }
+        });
     },
 
     iniciarCarrera(id) {
