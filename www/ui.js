@@ -930,9 +930,9 @@ const UI = {
             <div class="rp-seq">${secuencia.map(k => `<span class="seq-key">${simbolos[k]}</span>`).join('')}</div>
             <div class="rp-info"><b id="rp-score">0</b> pts · Presiona las flechas en orden</div>`;
         const s = this._skillRace;
-        s.seqIdx = 0; s.secuencia = secuencia;
+        s.seqIdx = 0; s.secuencia = secuencia; s.cooldown = false;
         const hit = (e) => {
-            if (!s.running || e.type !== 'keydown') return;
+            if (!s.running || e.type !== 'keydown' || s.cooldown) return;
             if (e.code === secuencia[s.seqIdx]) {
                 s.seqIdx++;
                 overlay.querySelectorAll('.seq-key')[s.seqIdx-1].style.background = '#2ecc71';
@@ -947,8 +947,19 @@ const UI = {
                 s.score = Math.max(0, s.score - 2);
                 s.bonusVisual = Math.max(0, s.bonusVisual - 0.02);
                 s.seqIdx = 0;
-                overlay.querySelectorAll('.seq-key').forEach(k => k.style.background = '');
                 this.toast('Secuencia incorrecta', 'error');
+                document.getElementById('rp-score').textContent = s.score;
+                // Reiniciar con nueva secuencia después de fallar
+                s.cooldown = true;
+                setTimeout(() => {
+                    if (!s.running) return;
+                    const newSeq = Array.from({length:longitud}, () => teclas[Math.floor(Math.random()*teclas.length)]);
+                    s.secuencia = newSeq;
+                    overlay.querySelector('.rp-seq').innerHTML = newSeq.map(k => `<span class="seq-key">${simbolos[k]}</span>`).join('');
+                    s.seqIdx = 0;
+                    s.cooldown = false;
+                }, 1500);
+                return;
             }
             document.getElementById('rp-score').textContent = s.score;
         };
@@ -1109,6 +1120,20 @@ const UI = {
                     s.bonusVisual = Math.max(0, s.bonusVisual - 0.02);
                     s.memIdx = 0;
                     this.toast('Incorrecto', 'error');
+                    document.getElementById('rp-score').textContent = s.score;
+                    // Reiniciar con nueva secuencia después de fallar
+                    s.mostrando = true;
+                    const newSeq = Array.from({length:cantidad}, () => colores[Math.floor(Math.random()*colores.length)]);
+                    s.secuencia = newSeq;
+                    document.getElementById('rp-mem').textContent = newSeq.join(' ');
+                    document.getElementById('rp-mem-btns').style.display = 'none';
+                    setTimeout(() => {
+                        if (!s.running) return;
+                        document.getElementById('rp-mem').textContent = '???';
+                        document.getElementById('rp-mem-btns').style.display = 'flex';
+                        s.mostrando = false;
+                    }, tiempoMemorizar);
+                    return;
                 }
                 document.getElementById('rp-score').textContent = s.score;
             });
