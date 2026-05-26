@@ -376,6 +376,7 @@ h1,h2,h3,h4 {
 }
 .runner img { width:38px; height:38px; object-fit:contain; display:block; }
 .runner-inner { display:inline-block; animation:galopar .18s infinite; }
+.runner-flipped { transform:scaleX(-1); }
 @keyframes galopar {
     0%,100%{transform:translateY(0) rotate(-3deg);}
     25%{transform:translateY(-2px) rotate(2deg);}
@@ -665,10 +666,12 @@ canvas.sprite-canvas {
 /* === CARRERA CARD (nuevo diseño con banner) === */
 .carrera-card {
     border-radius:12px; overflow:hidden;
-    background:var(--c-bg2); border:1px solid var(--c-borde);
+    background:linear-gradient(135deg, rgba(30,35,45,.95), rgba(20,25,35,.95));
+    border:1px solid rgba(255,255,255,.12);
     margin-bottom:14px; transition:transform .15s, box-shadow .15s;
+    box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
-.carrera-card:hover:not(.inactiva) { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.3); }
+.carrera-card:hover:not(.inactiva) { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.5), 0 0 0 1px rgba(245,176,65,.3); }
 .carrera-card.inactiva { opacity:.5; filter:grayscale(.4); }
 .carrera-banner {
     height:80px; position:relative; display:flex; align-items:flex-end;
@@ -676,23 +679,27 @@ canvas.sprite-canvas {
 }
 .carrera-banner-overlay {
     width:100%; padding:10px 14px; display:flex; align-items:center; gap:8px;
-    background:linear-gradient(transparent,rgba(0,0,0,.65));
+    background:linear-gradient(transparent,rgba(0,0,0,.85));
 }
-.carrera-banner-overlay h3 { flex:1; margin:0; color:#fff; font-size:1.05em; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.carrera-banner-overlay h3 { flex:1; margin:0; color:#fff; font-size:1.1em; font-weight:700; text-shadow:0 2px 6px rgba(0,0,0,.8); }
 .carrera-tipo {
     font-size:.65em; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
-    padding:3px 8px; border-radius:4px; color:#fff;
+    padding:4px 10px; border-radius:6px; color:#fff;
+    background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.2);
+    text-shadow:0 1px 3px rgba(0,0,0,.5);
 }
 .carrera-nivel-badge {
-    font-size:.75em; font-weight:600; color:#fff; background:rgba(255,255,255,.15);
-    padding:2px 8px; border-radius:4px; backdrop-filter:blur(2px);
+    font-size:.75em; font-weight:700; color:#fff; background:rgba(245,176,65,.85);
+    padding:3px 10px; border-radius:6px; backdrop-filter:blur(2px);
+    text-shadow:0 1px 2px rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.2);
 }
-.carrera-details { padding:12px 14px; }
+.carrera-details { padding:12px 14px; background:rgba(0,0,0,.15); }
 .carrera-stats-row { display:flex; gap:8px; margin-bottom:8px; }
-.carrera-stat { flex:1; text-align:center; }
-.carrera-stat span { display:block; font-size:.7em; color:var(--c-muted); text-transform:uppercase; }
-.carrera-stat b { font-size:.9em; }
-.premio-gold { color:#f1c40f; }
+.carrera-stat { flex:1; text-align:center; padding:8px; background:rgba(255,255,255,.04); border-radius:6px; border:1px solid rgba(255,255,255,.08); }
+.carrera-stat span { display:block; font-size:.7em; color:rgba(255,255,255,.6); text-transform:uppercase; font-weight:600; letter-spacing:.05em; margin-bottom:4px; }
+.carrera-stat b { font-size:1em; color:#fff; font-weight:700; }
+.premio-gold { color:#ffd700; text-shadow:0 0 8px rgba(255,215,0,.4); font-weight:700; }
 .btn-correr-full {
     width:100%; margin-top:6px; padding:10px; font-size:.95em;
     border-radius:8px; font-weight:700; letter-spacing:.03em;

@@ -686,14 +686,14 @@ const UI = {
         else this._cerrarRitmoPerfecto();
         const carriles = document.getElementById('carriles');
         const claseBadge = (c) => c.clase ? `<span class="carril-clase" style="color:${c.clase.color}">${c.clase.emoji}</span>` : '';
-        // Caballos van de IZQUIERDA → DERECHA usando gallop_right
+        // Caballos van de IZQUIERDA → DERECHA (volteados con scaleX)
         carriles.innerHTML = ranking.map(r => {
             const c = r.caballo;
             const yo = c.id === mi.id;
             return `<div class="carril" data-id="${c.id}">
                 <div class="carril-info ${yo?'tu':''}">${yo?'★ ':''}${claseBadge(c)}${c.nombre}</div>
                 <div class="runner" style="left:2%">
-                    <span class="runner-inner">${Horse.visualHTML(c, 1.2, 'gallop_right')}</span>
+                    <span class="runner-inner runner-flipped">${Horse.visualHTML(c, 1.2, 'gallop_left')}</span>
                     <span class="stamina-indicator"></span>
                     <span class="tired-fx"></span>
                     ${this.tooltipHTML(c)}
@@ -701,10 +701,10 @@ const UI = {
             </div>`;
         }).join('');
 
-        // Duración escala con distancia
-        const baseDur = onFinish ? 6500 : 4000;
+        // Duración escala con distancia - CARRERAS MÁS LARGAS para dar tiempo a minijuegos
+        const baseDur = onFinish ? 18000 : 35000;
         const distFactor = Math.sqrt(carrera.distancia / 50);
-        const totalMs = Math.min(onFinish ? 22000 : 16000, baseDur + distFactor * 2500);
+        const totalMs = Math.min(onFinish ? 45000 : 180000, baseDur + distFactor * 8000);
         const totalTicks = telemetria.length;
         const inicio = performance.now();
         const distEl = document.getElementById('distancia-actual');
@@ -752,9 +752,9 @@ const UI = {
                 // Cambiar animación según cansancio (sprites.js lee data-anim en su loop)
                 const cv = runner.querySelector('canvas.sprite-canvas');
                 if (cv) {
-                    if (s.cansado || s.staminaPct < 0.15) cv.dataset.anim = 'walk_right';
-                    else if (s.staminaPct < 0.35) cv.dataset.anim = 'trot_right';
-                    else cv.dataset.anim = 'gallop_right';
+                    if (s.cansado || s.staminaPct < 0.15) cv.dataset.anim = 'walk_left';
+                    else if (s.staminaPct < 0.35) cv.dataset.anim = 'trot_left';
+                    else cv.dataset.anim = 'gallop_left';
                 }
             });
             distEl.textContent = Math.floor(miSnap.progreso * carrera.distancia);
@@ -816,7 +816,7 @@ const UI = {
     },
     
     _minijuegoRitmo(dif, overlay) {
-        const velocidad = 1.2 + dif * 0.4;
+        const velocidad = 0.6 + dif * 0.25;
         const zoneSize = Math.max(10, 20 - dif * 2);
         overlay.innerHTML = `<div class="rp-title">⚡ Ritmo Perfecto (Nv.${dif})</div>
             <div class="rp-bar"><div class="rp-zone" style="left:${50-zoneSize/2}%;width:${zoneSize}%"></div><div class="rp-cursor"></div></div>
@@ -937,7 +937,7 @@ const UI = {
     },
     
     _minijuegoPrecision(dif, overlay) {
-        const velocidad = 0.8 + dif * 0.3;
+        const velocidad = 0.5 + dif * 0.2;
         const targetSize = Math.max(8, 18 - dif * 2);
         overlay.innerHTML = `<div class="rp-title">🎯 Precisión (Nv.${dif})</div>
             <div class="rp-bar"><div class="rp-target" id="rp-target" style="width:${targetSize}%"></div><div class="rp-cursor"></div></div>
@@ -1068,7 +1068,7 @@ const UI = {
     },
     
     _minijuegoTiming(dif, overlay) {
-        const velocidad = 1.5 + dif * 0.5;
+        const velocidad = 0.8 + dif * 0.3;
         const zonas = 2 + Math.floor(dif / 2);
         let zonasHTML = '';
         for (let i = 0; i < zonas; i++) {
@@ -1116,7 +1116,7 @@ const UI = {
     },
     
     _minijuegoReflejos(dif, overlay) {
-        const velocidad = 1.8 + dif * 0.6;
+        const velocidad = 0.9 + dif * 0.35;
         overlay.innerHTML = `<div class="rp-title">💨 Reflejos (Nv.${dif})</div>
             <div class="rp-bar"><div class="rp-zone rp-zone-moving" id="rp-zone-moving" style="width:12%"></div><div class="rp-cursor"></div></div>
             <div class="rp-info"><b id="rp-score">0</b> pts · Presiona cuando cursor toque zona móvil</div>`;
