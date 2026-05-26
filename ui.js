@@ -686,14 +686,14 @@ const UI = {
         else this._cerrarRitmoPerfecto();
         const carriles = document.getElementById('carriles');
         const claseBadge = (c) => c.clase ? `<span class="carril-clase" style="color:${c.clase.color}">${c.clase.emoji}</span>` : '';
-        // Caballos van de IZQUIERDA → DERECHA (volteados con scaleX)
+        // Caballos van de IZQUIERDA → DERECHA usando animaciones _right
         carriles.innerHTML = ranking.map(r => {
             const c = r.caballo;
             const yo = c.id === mi.id;
             return `<div class="carril" data-id="${c.id}">
                 <div class="carril-info ${yo?'tu':''}">${yo?'★ ':''}${claseBadge(c)}${c.nombre}</div>
                 <div class="runner" style="left:2%">
-                    <span class="runner-inner runner-flipped">${Horse.visualHTML(c, 1.2, 'gallop_left')}</span>
+                    <span class="runner-inner">${Horse.visualHTML(c, 1.2, 'gallop_right')}</span>
                     <span class="stamina-indicator"></span>
                     <span class="tired-fx"></span>
                     ${this.tooltipHTML(c)}
@@ -752,9 +752,9 @@ const UI = {
                 // Cambiar animación según cansancio (sprites.js lee data-anim en su loop)
                 const cv = runner.querySelector('canvas.sprite-canvas');
                 if (cv) {
-                    if (s.cansado || s.staminaPct < 0.15) cv.dataset.anim = 'walk_left';
-                    else if (s.staminaPct < 0.35) cv.dataset.anim = 'trot_left';
-                    else cv.dataset.anim = 'gallop_left';
+                    if (s.cansado || s.staminaPct < 0.15) cv.dataset.anim = 'walk_right';
+                    else if (s.staminaPct < 0.35) cv.dataset.anim = 'trot_right';
+                    else cv.dataset.anim = 'gallop_right';
                 }
             });
             distEl.textContent = Math.floor(miSnap.progreso * carrera.distancia);
