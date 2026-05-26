@@ -377,10 +377,10 @@ h1,h2,h3,h4 {
 .runner img { width:38px; height:38px; object-fit:contain; display:block; }
 .runner-inner { display:inline-block; animation:galopar .18s infinite; }
 @keyframes galopar {
-    0%,100%{transform:translateY(0) rotate(-3deg);}
-    25%{transform:translateY(-2px) rotate(2deg);}
-    50%{transform:translateY(0) rotate(-2deg);}
-    75%{transform:translateY(-3px) rotate(3deg);}
+    0%,100%{transform:scaleX(-1) translateY(0) rotate(-3deg);}
+    25%{transform:scaleX(-1) translateY(-2px) rotate(2deg);}
+    50%{transform:scaleX(-1) translateY(0) rotate(-2deg);}
+    75%{transform:scaleX(-1) translateY(-3px) rotate(3deg);}
 }
 
 /* Polvo (detrás del caballo que va hacia la derecha) */

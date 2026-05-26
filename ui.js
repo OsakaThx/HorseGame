@@ -845,13 +845,28 @@ const UI = {
             score: 0, 
             bonusVisual: 0, 
             overlay, 
-            running: true, 
+            running: false,
             tipo: tipoActual,
             dificultad,
-            nivel
+            nivel,
+            cooldown: false
         };
         
-        this._iniciarMinijuego(tipoActual, dificultad, overlay);
+        // Countdown inicial de 3 segundos
+        overlay.innerHTML = `<div class="rp-title">🔒 Preparando minijuego...</div>
+            <div class="rp-countdown" id="rp-countdown" style="font-size:3em;font-weight:bold;margin:20px 0">3</div>
+            <div class="rp-info">El minijuego comenzará pronto</div>`;
+        let countdown = 3;
+        const countInterval = setInterval(() => {
+            countdown--;
+            const el = document.getElementById('rp-countdown');
+            if (el) el.textContent = countdown > 0 ? countdown : '¡YA!';
+            if (countdown <= 0) {
+                clearInterval(countInterval);
+                this._skillRace.running = true;
+                this._iniciarMinijuego(tipoActual, dificultad, overlay);
+            }
+        }, 1000);
     },
     _iniciarMinijuego(tipo, dificultad, overlay) {
         const handlers = {
@@ -874,17 +889,21 @@ const UI = {
             <div class="rp-bar"><div class="rp-zone" style="left:${50-zoneSize/2}%;width:${zoneSize}%"></div><div class="rp-cursor"></div></div>
             <div class="rp-info"><b id="rp-score">0</b> pts · Espacio/Click en verde</div>`;
         const s = this._skillRace;
-        s.cursor = 0; s.dir = 1;
+        s.cursor = 0; s.dir = 1; s.lastHit = 0;
         const hit = (e) => {
             if (e && e.type === 'keydown' && e.code !== 'Space') return;
             if (e) e.preventDefault();
-            if (!s.running) return;
+            if (!s.running || s.cooldown) return;
+            const now = performance.now();
             const perfecto = s.cursor >= 50-zoneSize/4 && s.cursor <= 50+zoneSize/4;
             const bueno = s.cursor >= 50-zoneSize/2 && s.cursor <= 50+zoneSize/2;
             if (perfecto) { s.score += 3; s.bonusVisual = Math.min(0.1, s.bonusVisual + 0.022); this.toast('¡Perfecto!', 'exito'); }
             else if (bueno) { s.score += 1; s.bonusVisual = Math.min(0.06, s.bonusVisual + 0.012); }
             else { s.score = Math.max(0, s.score - 1); s.bonusVisual = Math.max(0, s.bonusVisual - 0.018); this.toast('Fallo', 'error'); }
             document.getElementById('rp-score').textContent = s.score;
+            s.lastHit = now;
+            s.cooldown = true;
+            setTimeout(() => { if (s) s.cooldown = false; }, 1500);
         };
         s.hit = hit;
         window.addEventListener('keydown', hit);
@@ -943,7 +962,7 @@ const UI = {
             <div class="rp-react" id="rp-react">Espera...</div>
             <div class="rp-info"><b id="rp-score">0</b> pts · Presiona cuando veas ¡YA!</div>`;
         const s = this._skillRace;
-        s.esperando = false; s.momento = 0;
+        s.esperando = false; s.momento = 0; s.timeoutId = null;
         const mostrar = () => {
             if (!s.running) return;
             const react = document.getElementById('rp-react');
@@ -953,9 +972,19 @@ const UI = {
             react.style.transform = 'scale(1.3)';
             s.esperando = true;
             s.momento = performance.now();
+            // Timeout de 2 segundos si no presiona
+            s.timeoutId = setTimeout(() => {
+                if (s.esperando) {
+                    s.score = Math.max(0, s.score - 2);
+                    this.toast('Muy lento', 'error');
+                    document.getElementById('rp-score').textContent = s.score;
+                    reset();
+                }
+            }, 2000);
         };
         const reset = () => {
             if (!s.running) return;
+            if (s.timeoutId) clearTimeout(s.timeoutId);
             const react = document.getElementById('rp-react');
             if (react) {
                 react.textContent = 'Espera...';
@@ -963,24 +992,32 @@ const UI = {
                 react.style.transform = '';
             }
             s.esperando = false;
-            setTimeout(mostrar, Math.random() * intervalo + intervalo);
+            s.cooldown = true;
+            setTimeout(() => {
+                if (s) {
+                    s.cooldown = false;
+                    mostrar();
+                }
+            }, Math.random() * intervalo + intervalo + 1500);
         };
         const hit = (e) => {
-            if (!s.running) return;
+            if (!s.running || s.cooldown) return;
             if (e && e.type === 'keydown' && e.code !== 'Space') return;
             if (e) e.preventDefault();
             if (s.esperando) {
+                if (s.timeoutId) clearTimeout(s.timeoutId);
                 const tiempo = performance.now() - s.momento;
                 const puntos = tiempo < 200 ? 5 : tiempo < 400 ? 3 : 1;
                 s.score += puntos;
                 s.bonusVisual = Math.min(0.1, s.bonusVisual + 0.02);
                 this.toast(`${tiempo.toFixed(0)}ms!`, 'exito');
+                document.getElementById('rp-score').textContent = s.score;
                 reset();
             } else {
                 s.score = Math.max(0, s.score - 2);
                 this.toast('Muy pronto', 'error');
+                document.getElementById('rp-score').textContent = s.score;
             }
-            document.getElementById('rp-score').textContent = s.score;
         };
         s.hit = hit;
         window.addEventListener('keydown', hit);
@@ -1039,12 +1076,13 @@ const UI = {
             <div class="rp-info"><b id="rp-score">0</b> pts · Memoriza y repite</div>`;
         const s = this._skillRace;
         s.secuencia = secuencia; s.memIdx = 0; s.mostrando = true;
+        const tiempoMemorizar = 2500 + dif * 600;
         setTimeout(() => {
             if (!s.running) return;
             document.getElementById('rp-mem').textContent = '???';
             document.getElementById('rp-mem-btns').style.display = 'flex';
             s.mostrando = false;
-        }, 1500 + dif * 400);
+        }, tiempoMemorizar);
         overlay.querySelectorAll('.mem-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (s.mostrando || !s.running) return;
