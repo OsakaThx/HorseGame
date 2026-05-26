@@ -164,6 +164,20 @@ const Horse = {
    Cada caballo "consume" estamina cada tick. Cuando llega a 0 está exhausto y va lento.
 */
 const Race = {
+    seededRandom(seed) {
+        let h = 2166136261;
+        for (let i = 0; i < String(seed).length; i++) {
+            h ^= String(seed).charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        return () => {
+            h += h << 13; h ^= h >>> 7;
+            h += h << 3; h ^= h >>> 17;
+            h += h << 5;
+            return ((h >>> 0) / 4294967296);
+        };
+    },
+
     /** Estima rendimiento total para ordenar (no corre la simulación) */
     calcularRendimiento(c, ca) {
         // Suma ponderada de stats segun la carrera
@@ -181,10 +195,11 @@ const Race = {
      *  ranking: array ordenado por posición final con datos completos
      *  telemetria: array de snapshots por tick (para animar)
      */
-    simular(participantes, ca) {
+    simular(participantes, ca, seed=null) {
         const TICKS = 200;            // resolución de la simulación
         const dist = ca.distancia;
         const esObstaculos = ca.tipo === 'obstaculos' || (ca.stat_weights && ca.stat_weights.salto >= 0.3);
+        const random = seed ? this.seededRandom(seed) : Math.random;
 
         // Aplicar bonificaciones de equipamiento a stats efectivos
         const aplicarEquipo = (c) => {
@@ -212,11 +227,11 @@ const Race = {
             const mBuff = c.buff_admin ? (1 + c.buff_admin/100) : 1;
             const mGlobal = mTer * mClima * mCond * mBuff;
             // Ruido fijo por carrera (algunos días el caballo simplemente corre mejor)
-            const suerte = 0.92 + Math.random() * 0.16;
+            const suerte = 0.92 + random() * 0.16;
             return {
                 c,
                 pos: 0,                                // metros recorridos
-                stamina: eStats.estamina * (0.85 + Math.random()*0.3) * mCond,
+                stamina: eStats.estamina * (0.85 + random()*0.3) * mCond,
                 staminaMax: eStats.estamina * mCond,
                 cansado: false,
                 mGlobal: mGlobal * suerte,
@@ -255,7 +270,7 @@ const Race = {
                 const staminaPct = cor.stamina / Math.max(1, cor.staminaMax);
                 if (cor.cansado) {
                     // Exhausto total: 25-40% del rendimiento
-                    v *= 0.25 + Math.random() * 0.15;
+                    v *= 0.25 + random() * 0.15;
                 } else if (staminaPct < 0.20) {
                     // Muy cansado: 50-65%
                     v *= 0.5 + staminaPct;
@@ -264,14 +279,14 @@ const Race = {
                     v *= 0.75 + staminaPct * 0.4;
                 }
                 v *= cor.mGlobal;
-                v *= 0.92 + Math.random() * 0.16;
+                v *= 0.92 + random() * 0.16;
                 // Obstáculos: chance de tropezar (mayor si tiene salto bajo)
                 if (esObstaculos) {
                     const numObstaculos = Math.floor(dist / 50);
                     const chanceTickConObstaculo = numObstaculos / TICKS;
-                    if (Math.random() < chanceTickConObstaculo) {
+                    if (random() < chanceTickConObstaculo) {
                         const chanceFallo = Math.max(0.05, (80 - cor.stats.salto) / 100);
-                        if (Math.random() < chanceFallo) {
+                        if (random() < chanceFallo) {
                             v *= 0.35; // tropezó fuerte
                             cor.tropezones++;
                             cor.stamina -= 3; // tropezarse cansa

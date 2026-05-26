@@ -60,11 +60,17 @@ const Api = {
     async removeFriend(id) {
         return this.request(`/api/friends/${id}`, { method:'DELETE' });
     },
-    async joinMatchmaking(horse) {
-        return this.request('/api/matchmaking/join', { method:'POST', body: JSON.stringify({ horse }) });
+    async joinMatchmaking(horse, maxPlayers = 2) {
+        return this.request('/api/matchmaking/join', { method:'POST', body: JSON.stringify({ horse, maxPlayers }) });
     },
     async matchmakingStatus() {
         return this.request('/api/matchmaking/status');
+    },
+    async voteMode(matchId, mode) {
+        return this.request(`/api/matchmaking/${matchId}/vote-mode`, { method:'POST', body: JSON.stringify({ mode }) });
+    },
+    async startMatch(matchId) {
+        return this.request(`/api/matchmaking/${matchId}/start`, { method:'POST' });
     },
     async leaveMatchmaking() {
         return this.request('/api/matchmaking/leave', { method:'DELETE' });

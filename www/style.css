@@ -383,15 +383,15 @@ h1,h2,h3,h4 {
     75%{transform:translateY(-3px) rotate(3deg);}
 }
 
-/* Polvo (detrás del caballo que va hacia la izquierda) */
+/* Polvo (detrás del caballo que va hacia la derecha) */
 .runner::before {
-    content:'💨'; position:absolute; left:100%; right:auto; top:50%;
-    transform:translateY(-50%) scale(.7) scaleX(-1); opacity:.55;
-    animation:polvo .5s infinite; margin-left:-4px; filter:blur(.5px);
+    content:'💨'; position:absolute; right:100%; left:auto; top:50%;
+    transform:translateY(-50%) scale(.7); opacity:.55;
+    animation:polvo .5s infinite; margin-right:-4px; filter:blur(.5px);
 }
 @keyframes polvo {
     0%{opacity:.6;transform:translateY(-50%) scale(.4);}
-    100%{opacity:0;transform:translate(20px,-50%) scale(1);}
+    100%{opacity:0;transform:translate(-20px,-50%) scale(1);}
 }
 
 /* Líder */
@@ -404,9 +404,9 @@ h1,h2,h3,h4 {
 
 /* Meta */
 .meta-final {
-    position:absolute; left:10px; right:auto; top:0; bottom:0; width:16px; z-index:1;
+    position:absolute; right:10px; left:auto; top:0; bottom:0; width:16px; z-index:1;
     background:repeating-conic-gradient(black 0 25%,white 0 50%) 0 0/16px 16px;
-    box-shadow:0 0 15px rgba(0,0,0,.5); border-right:2px solid #fff;
+    box-shadow:0 0 15px rgba(0,0,0,.5); border-left:2px solid #fff;
 }
 .meta-final::before {
     content:'🏁'; position:absolute; top:-22px; left:50%;
@@ -422,6 +422,32 @@ h1,h2,h3,h4 {
     margin-bottom:12px; flex-wrap:wrap; gap:8px;
 }
 .hud-carrera .pos-actual { font-size:1.3em; font-weight:bold; color:var(--c-prim); }
+
+.ritmo-perfecto {
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+    width:min(520px,92vw); z-index:999; padding:12px 14px;
+    background:rgba(10,20,30,.92); border:1px solid rgba(255,255,255,.18);
+    border-radius:14px; box-shadow:0 10px 35px rgba(0,0,0,.45); color:#fff;
+    text-align:center; user-select:none;
+}
+.rp-title { font-weight:800; margin-bottom:8px; color:#ffd76a; }
+.rp-bar { position:relative; height:18px; border-radius:999px; overflow:hidden; background:#182334; border:1px solid rgba(255,255,255,.18); }
+.rp-zone { position:absolute; left:42%; width:16%; top:0; bottom:0; background:linear-gradient(90deg,#2ecc71,#a8ff78); box-shadow:0 0 12px #2ecc71; z-index:1; }
+.rp-zone-moving { background:linear-gradient(90deg,#3498db,#5dade2); box-shadow:0 0 12px #3498db; }
+.rp-target { position:absolute; top:0; bottom:0; background:linear-gradient(90deg,#e74c3c,#ec7063); box-shadow:0 0 12px #e74c3c; z-index:1; }
+.rp-cursor { position:absolute; top:-4px; bottom:-4px; width:4px; background:#fff; box-shadow:0 0 10px #fff; transform:translateX(-50%); z-index:2; }
+.rp-info { margin-top:8px; font-size:.85em; color:#dce8ff; }
+.rp-seq { display:flex; gap:8px; justify-content:center; margin:10px 0; }
+.seq-key { display:inline-block; width:42px; height:42px; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.3); border-radius:8px; font-size:1.6em; line-height:38px; text-align:center; transition:all .2s; }
+.seq-key:hover { transform:scale(1.1); }
+.rp-react { padding:20px; margin:10px 0; background:rgba(255,255,255,.08); border-radius:12px; font-size:1.8em; font-weight:bold; text-align:center; transition:all .3s; }
+.rp-mem { font-size:2em; text-align:center; margin:12px 0; min-height:50px; }
+.rp-mem-btns { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:10px 0; }
+.mem-btn { background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.25); border-radius:8px; padding:8px 12px; font-size:1.4em; cursor:pointer; transition:all .2s; }
+.mem-btn:hover { transform:scale(1.15); background:rgba(255,255,255,.2); }
+.rp-combo { text-align:center; font-size:1.1em; margin:8px 0; }
+.rp-combo-bar { height:12px; background:rgba(0,0,0,.4); border-radius:999px; overflow:hidden; margin:10px 0; }
+.rp-combo-bar > div { height:100%; background:linear-gradient(90deg,#f39c12,#e67e22); transition:width .15s; }
 
 /* Resultados */
 .resultado-fila {

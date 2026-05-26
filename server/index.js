@@ -16,7 +16,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 function makeToken(user) {
-  return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id: user.id, email: user.email, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
 }
 
 function auth(req, res, next) {
@@ -176,45 +176,56 @@ app.delete('/api/friends/:id', auth, async (req, res) => {
 app.post('/api/matchmaking/join', auth, async (req, res) => {
   try {
     const horse = req.body.horse;
+    const maxPlayers = Math.max(2, Math.min(8, Number(req.body.maxPlayers || 2)));
     if (!horse || !horse.id || !horse.nombre) return res.status(400).json({ error: 'Caballo inválido' });
 
     const opponent = await get(
-      `SELECT q.user_id, q.horse_snapshot, u.email, u.username
+      `SELECT q.user_id, q.horse_snapshot, q.max_players, u.email, u.username
        FROM matchmaking_queue q
        JOIN users u ON u.id = q.user_id
-       WHERE q.user_id <> $1
+       WHERE q.user_id <> $1 AND q.max_players = $2
        ORDER BY q.joined_at ASC
        LIMIT 1`,
-      [req.user.id]
+      [req.user.id, maxPlayers]
     );
 
     if (opponent) {
       await run('DELETE FROM matchmaking_queue WHERE user_id IN ($1, $2)', [req.user.id, opponent.user_id]);
+      const seed = `${Date.now()}_${opponent.user_id}_${req.user.id}_${Math.random().toString(36).slice(2)}`;
       const result = await run(
-        `INSERT INTO online_matches (player1_id, player2_id, player1_horse, player2_horse)
-         VALUES ($1, $2, $3::jsonb, $4::jsonb)
-         RETURNING id, created_at`,
-        [opponent.user_id, req.user.id, JSON.stringify(opponent.horse_snapshot), JSON.stringify(horse)]
+        `INSERT INTO online_matches (player1_id, player2_id, player1_horse, player2_horse, race_seed, max_players, status)
+         VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6, 'lobby')
+         RETURNING id, race_seed, max_players, status, mode_votes, selected_mode, created_at`,
+        [opponent.user_id, req.user.id, JSON.stringify(opponent.horse_snapshot), JSON.stringify(horse), seed, maxPlayers]
       );
       return res.status(201).json({
         status: 'matched',
         match: {
           id: result.rows[0].id,
+          seed: result.rows[0].race_seed,
+          status: result.rows[0].status,
+          maxPlayers: result.rows[0].max_players,
+          modeVotes: result.rows[0].mode_votes || {},
+          selectedMode: result.rows[0].selected_mode,
           createdAt: result.rows[0].created_at,
           opponent: { id: opponent.user_id, email: opponent.email, username: opponent.username },
           opponentHorse: opponent.horse_snapshot,
-          yourHorse: horse
+          yourHorse: horse,
+          participants: [
+            { userId: opponent.user_id, user: { id: opponent.user_id, email: opponent.email, username: opponent.username }, horse: opponent.horse_snapshot },
+            { userId: req.user.id, user: { id: req.user.id, email: req.user.email, username: req.user.username }, horse }
+          ]
         }
       });
     }
 
     await run(
-      `INSERT INTO matchmaking_queue (user_id, horse_snapshot, joined_at)
-       VALUES ($1, $2::jsonb, NOW())
-       ON CONFLICT (user_id) DO UPDATE SET horse_snapshot=excluded.horse_snapshot, joined_at=NOW()`,
-      [req.user.id, JSON.stringify(horse)]
+      `INSERT INTO matchmaking_queue (user_id, horse_snapshot, max_players, joined_at)
+       VALUES ($1, $2::jsonb, $3, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET horse_snapshot=excluded.horse_snapshot, max_players=excluded.max_players, joined_at=NOW()`,
+      [req.user.id, JSON.stringify(horse), maxPlayers]
     );
-    res.json({ status: 'waiting' });
+    res.json({ status: 'waiting', maxPlayers });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error buscando partida' });
@@ -224,7 +235,8 @@ app.post('/api/matchmaking/join', auth, async (req, res) => {
 app.get('/api/matchmaking/status', auth, async (req, res) => {
   try {
     const match = await get(
-      `SELECT m.id, m.player1_id, m.player2_id, m.player1_horse, m.player2_horse, m.created_at,
+      `SELECT m.id, m.player1_id, m.player2_id, m.player1_horse, m.player2_horse, m.race_seed,
+              m.max_players, m.status, m.mode_votes, m.selected_mode, m.created_at,
               u1.email AS p1_email, u1.username AS p1_username,
               u2.email AS p2_email, u2.username AS p2_username
        FROM online_matches m
@@ -242,12 +254,21 @@ app.get('/api/matchmaking/status', auth, async (req, res) => {
         status: 'matched',
         match: {
           id: match.id,
+          seed: match.race_seed,
+          status: match.status,
+          maxPlayers: match.max_players,
+          modeVotes: match.mode_votes || {},
+          selectedMode: match.selected_mode,
           createdAt: match.created_at,
           opponent: isP1
             ? { id: match.player2_id, email: match.p2_email, username: match.p2_username }
             : { id: match.player1_id, email: match.p1_email, username: match.p1_username },
           opponentHorse: isP1 ? match.player2_horse : match.player1_horse,
-          yourHorse: isP1 ? match.player1_horse : match.player2_horse
+          yourHorse: isP1 ? match.player1_horse : match.player2_horse,
+          participants: [
+            { userId: match.player1_id, user: { id: match.player1_id, email: match.p1_email, username: match.p1_username }, horse: match.player1_horse },
+            { userId: match.player2_id, user: { id: match.player2_id, email: match.p2_email, username: match.p2_username }, horse: match.player2_horse }
+          ]
         }
       });
     }
@@ -257,6 +278,59 @@ app.get('/api/matchmaking/status', auth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error revisando matchmaking' });
+  }
+});
+
+app.post('/api/matchmaking/:id/vote-mode', auth, async (req, res) => {
+  try {
+    const matchId = Number(req.params.id);
+    const mode = String(req.body.mode || '').trim();
+    const allowed = ['velocidad', 'resistencia', 'obstaculos', 'mixta'];
+    if (!allowed.includes(mode)) return res.status(400).json({ error: 'Modo inválido' });
+
+    const match = await get('SELECT id, player1_id, player2_id, mode_votes FROM online_matches WHERE id = $1 AND (player1_id = $2 OR player2_id = $2)', [matchId, req.user.id]);
+    if (!match) return res.status(404).json({ error: 'Lobby no encontrado' });
+
+    const votes = match.mode_votes || {};
+    votes[String(req.user.id)] = mode;
+    const values = Object.values(votes);
+    let selectedMode = null;
+    if (values.length >= 2 && values.every(v => v === values[0])) selectedMode = values[0];
+
+    const result = await run(
+      `UPDATE online_matches
+       SET mode_votes = $1::jsonb, selected_mode = COALESCE($2, selected_mode)
+       WHERE id = $3
+       RETURNING id, mode_votes, selected_mode, status`,
+      [JSON.stringify(votes), selectedMode, matchId]
+    );
+    res.json({ match: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error votando modo' });
+  }
+});
+
+app.post('/api/matchmaking/:id/start', auth, async (req, res) => {
+  try {
+    const matchId = Number(req.params.id);
+    const match = await get('SELECT id, player1_id, player2_id, mode_votes, selected_mode FROM online_matches WHERE id = $1 AND (player1_id = $2 OR player2_id = $2)', [matchId, req.user.id]);
+    if (!match) return res.status(404).json({ error: 'Lobby no encontrado' });
+
+    const votes = Object.values(match.mode_votes || {});
+    const modes = votes.length ? votes : ['mixta'];
+    const selectedMode = match.selected_mode || modes[Math.floor(Math.random() * modes.length)];
+    const result = await run(
+      `UPDATE online_matches
+       SET selected_mode = $1, status = 'racing'
+       WHERE id = $2
+       RETURNING id, selected_mode, status`,
+      [selectedMode, matchId]
+    );
+    res.json({ match: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error iniciando partida' });
   }
 });
 

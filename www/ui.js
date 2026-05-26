@@ -6,6 +6,8 @@ const UI = {
     tabTienda: 'caballos',
     _criaSel: { a:null, b:null },
     _onlinePolling: null,
+    _onlineMatch: null,
+    _skillRace: null,
 
     show(id) {
         document.querySelectorAll('.pantalla').forEach(p => p.classList.remove('activa'));
@@ -96,6 +98,17 @@ const UI = {
                 </div>
             </div>
             <div id="online-status" class="mt-10 muted">Listo para buscar rival.</div>
+            <div class="form-grupo mt-10">
+                <label>Límite de jugadores</label>
+                <select id="online-max-players">
+                    <option value="2">2 jugadores</option>
+                    <option value="3">3 jugadores</option>
+                    <option value="4">4 jugadores</option>
+                    <option value="6">6 jugadores</option>
+                    <option value="8">8 jugadores</option>
+                </select>
+            </div>
+            <div id="online-lobby"></div>
             <div class="flex-row mt-10">
                 <button class="btn btn-success" onclick="UI.buscarOnline()">🔎 Buscar partida</button>
                 <button class="btn btn-sec" onclick="UI.salirOnline()">Cancelar búsqueda</button>
@@ -107,14 +120,15 @@ const UI = {
             const st = document.getElementById('online-status');
             if (st) st.textContent = 'Buscando rival...';
             const c = Game.getCaballoSeleccionado();
-            const r = await Api.joinMatchmaking(c);
+            const maxPlayers = Number(document.getElementById('online-max-players')?.value || 2);
+            const r = await Api.joinMatchmaking(c, maxPlayers);
             if (r.status === 'waiting') {
                 if (st) st.innerHTML = '⏳ En cola. Esperando otro jugador... Te aviso cuando encuentre rival.';
                 this.toast('Buscando rival...');
                 this._iniciarPollingOnline();
                 return;
             }
-            if (r.status === 'matched') this._iniciarCarreraOnline(r.match);
+            if (r.status === 'matched') this._mostrarLobbyOnline(r.match);
         } catch (e) {
             this.toast(e.message, 'error');
         }
@@ -124,10 +138,16 @@ const UI = {
         this._onlinePolling = setInterval(async () => {
             try {
                 const r = await Api.matchmakingStatus();
-                if (r.status === 'matched') {
-                    clearInterval(this._onlinePolling);
-                    this._onlinePolling = null;
-                    this._iniciarCarreraOnline(r.match);
+                if (r.status === 'matched' && r.match) {
+                    if (r.match.status === 'racing') {
+                        clearInterval(this._onlinePolling);
+                        this._onlinePolling = null;
+                        this._onlineMatch = r.match;
+                        await this._animarSeleccionModo(r.match);
+                        this._iniciarCarreraOnline(r.match);
+                    } else {
+                        this._mostrarLobbyOnline(r.match);
+                    }
                 }
             } catch (e) {
                 clearInterval(this._onlinePolling);
@@ -148,23 +168,113 @@ const UI = {
             this.toast(e.message, 'error');
         }
     },
+    _mostrarLobbyOnline(match) {
+        this._onlineMatch = match;
+        const st = document.getElementById('online-status');
+        if (st) st.textContent = `Lobby encontrado #${match.id}. Vota el modo y pueden iniciar ya.`;
+        const cont = document.getElementById('online-lobby');
+        if (!cont) return;
+        const modes = [
+            ['velocidad','⚡ Velocidad'],
+            ['resistencia','💪 Resistencia'],
+            ['obstaculos','🚧 Obstáculos'],
+            ['mixta','🎲 Mixta']
+        ];
+        const votes = match.modeVotes || {};
+        const voteText = Object.values(votes).length ? Object.values(votes).join(', ') : 'sin votos';
+        cont.innerHTML = `<div class="tarjeta mt-10">
+            <h3>🏟️ Sala online</h3>
+            <p class="muted">Jugadores: ${(match.participants || []).length}/${match.maxPlayers || 2}</p>
+            <p class="muted">Votos: ${voteText}</p>
+            <div class="grid-2 mt-10">
+                ${modes.map(([id, label]) => `<button class="btn btn-sec" onclick="UI.votarModoOnline('${id}')">${label}</button>`).join('')}
+            </div>
+            <div class="flex-row mt-10">
+                <button class="btn btn-success" onclick="UI.iniciarMatchOnline()">🏁 Iniciar ya</button>
+                <button class="btn btn-sec" onclick="UI._iniciarPollingOnline()">⏳ Esperar más</button>
+            </div>
+            <p class="muted mt-10">Si votan modos distintos, al iniciar se elegirá aleatoriamente entre los votos.</p>
+        </div>`;
+        this._iniciarPollingOnline();
+    },
+    async votarModoOnline(mode) {
+        if (!this._onlineMatch) return;
+        try {
+            const r = await Api.voteMode(this._onlineMatch.id, mode);
+            this._onlineMatch.modeVotes = r.match.mode_votes || {};
+            this._onlineMatch.selectedMode = r.match.selected_mode;
+            this.toast('Voto guardado', 'exito');
+            this._mostrarLobbyOnline(this._onlineMatch);
+        } catch (e) {
+            this.toast(e.message, 'error');
+        }
+    },
+    async iniciarMatchOnline() {
+        if (!this._onlineMatch) return;
+        try {
+            const r = await Api.startMatch(this._onlineMatch.id);
+            this._onlineMatch.status = r.match.status;
+            this._onlineMatch.selectedMode = r.match.selected_mode;
+            clearInterval(this._onlinePolling);
+            this._onlinePolling = null;
+            await this._animarSeleccionModo(this._onlineMatch);
+            this._iniciarCarreraOnline(this._onlineMatch);
+        } catch (e) {
+            this.toast(e.message, 'error');
+        }
+    },
+    _animarSeleccionModo(match) {
+        return new Promise(resolve => {
+            const cont = document.getElementById('online-lobby');
+            const votes = Object.values(match.modeVotes || {});
+            const pool = votes.length ? votes : ['mixta'];
+            let i = 0;
+            const names = { velocidad:'⚡ Velocidad', resistencia:'💪 Resistencia', obstaculos:'🚧 Obstáculos', mixta:'🎲 Mixta' };
+            const timer = setInterval(() => {
+                const mode = pool[i % pool.length];
+                if (cont) cont.innerHTML = `<div class="tarjeta mt-10 text-center"><h3>🎰 Seleccionando modo...</h3><h2>${names[mode] || mode}</h2></div>`;
+                i++;
+                if (i > 8) {
+                    clearInterval(timer);
+                    if (cont) cont.innerHTML = `<div class="tarjeta mt-10 text-center"><h3>✅ Modo elegido</h3><h2>${names[match.selectedMode] || match.selectedMode}</h2></div>`;
+                    setTimeout(resolve, 900);
+                }
+            }, 220);
+        });
+    },
     _iniciarCarreraOnline(match) {
-        const mi = Game.getCaballoSeleccionado();
-        const rival = match.opponentHorse;
-        rival.id = `rival_${match.opponent.id}_${rival.id}`;
-        rival.condicion = rival.condicion ?? 100;
-        rival.preferencias = rival.preferencias || { terreno:{}, clima:{} };
+        const myUserId = Api.user && Api.user.id;
+        const participants = (match.participants || [
+            { userId: myUserId, horse: match.yourHorse },
+            { userId: match.opponent.id, user: match.opponent, horse: match.opponentHorse }
+        ]).map(p => {
+            const horse = JSON.parse(JSON.stringify(p.horse));
+            horse.id = `online_${p.userId}_${horse.id}`;
+            horse.condicion = horse.condicion ?? 100;
+            horse.preferencias = horse.preferencias || { terreno:{}, clima:{} };
+            return { ...p, horse };
+        });
+        const myParticipant = participants.find(p => p.userId === myUserId) || participants[0];
+        const mi = myParticipant.horse;
+        const mode = match.selectedMode || 'mixta';
+        const presets = {
+            velocidad: { nombre:'⚡ Velocidad', distancia:120, tipo:'plana', stat_weights:{ velocidad:0.45, velocidadPunta:0.35, aceleracion:0.20, estamina:0.05, salto:0 } },
+            resistencia: { nombre:'💪 Resistencia', distancia:420, tipo:'plana', stat_weights:{ velocidad:0.20, velocidadPunta:0.15, aceleracion:0.10, estamina:0.55, salto:0 } },
+            obstaculos: { nombre:'🚧 Obstáculos', distancia:260, tipo:'obstaculos', stat_weights:{ velocidad:0.20, velocidadPunta:0.15, aceleracion:0.15, estamina:0.20, salto:0.30 } },
+            mixta: { nombre:'🎲 Mixta', distancia:220, tipo:'plana', stat_weights:{ velocidad:0.30, velocidadPunta:0.25, estamina:0.25, aceleracion:0.15, salto:0.05 } }
+        };
+        const preset = presets[mode] || presets.mixta;
         const carrera = {
             id: `online_${match.id}`,
-            nombre: `PvP Online #${match.id}`,
-            distancia: 200,
+            nombre: `PvP Online #${match.id} · ${preset.nombre}`,
+            distancia: preset.distancia,
             terreno: 'pasto',
             clima: 'soleado',
-            tipo: 'plana',
+            tipo: preset.tipo,
             premios: [0, 0],
-            stat_weights: { velocidad:0.35, velocidadPunta:0.25, estamina:0.25, aceleracion:0.15, salto:0 }
+            stat_weights: preset.stat_weights
         };
-        const sim = Race.simular([mi, rival], carrera);
+        const sim = Race.simular(participants.map(p => p.horse), carrera, match.seed || `online_${match.id}`);
         this._showRaceLoading(carrera, () => {
             this._prepararEscenaCarrera(carrera);
             this.animarCarrera(sim, carrera, mi, (ranking) => this.finalizarCarreraOnline(ranking, carrera, mi, match));
@@ -572,16 +682,18 @@ const UI = {
         const { ranking, telemetria } = sim;
         this._raceEndPending = false;
         this._raceEnded = false;
+        if (!onFinish) this._iniciarRitmoPerfecto(carrera, mi);
+        else this._cerrarRitmoPerfecto();
         const carriles = document.getElementById('carriles');
         const claseBadge = (c) => c.clase ? `<span class="carril-clase" style="color:${c.clase.color}">${c.clase.emoji}</span>` : '';
-        // Caballos van de DERECHA → IZQUIERDA usando gallop_left
+        // Caballos van de IZQUIERDA → DERECHA usando gallop_right
         carriles.innerHTML = ranking.map(r => {
             const c = r.caballo;
             const yo = c.id === mi.id;
             return `<div class="carril" data-id="${c.id}">
                 <div class="carril-info ${yo?'tu':''}">${yo?'★ ':''}${claseBadge(c)}${c.nombre}</div>
-                <div class="runner" style="left:88%">
-                    <span class="runner-inner">${Horse.visualHTML(c, 1.2, 'gallop_left')}</span>
+                <div class="runner" style="left:2%">
+                    <span class="runner-inner">${Horse.visualHTML(c, 1.2, 'gallop_right')}</span>
                     <span class="stamina-indicator"></span>
                     <span class="tired-fx"></span>
                     ${this.tooltipHTML(c)}
@@ -590,9 +702,9 @@ const UI = {
         }).join('');
 
         // Duración escala con distancia
-        const baseDur = 4000;
+        const baseDur = onFinish ? 6500 : 4000;
         const distFactor = Math.sqrt(carrera.distancia / 50);
-        const totalMs = Math.min(16000, baseDur + distFactor * 2500);
+        const totalMs = Math.min(onFinish ? 22000 : 16000, baseDur + distFactor * 2500);
         const totalTicks = telemetria.length;
         const inicio = performance.now();
         const distEl = document.getElementById('distancia-actual');
@@ -604,6 +716,13 @@ const UI = {
             const snapshot = telemetria[tickIdx];
 
             const miSnap = snapshot.find(s => s.id === mi.id);
+            if (!miSnap) {
+                console.warn('No se encontró telemetría para el caballo del jugador', mi.id);
+                this._raceEnded = true;
+                if (onFinish) onFinish(ranking, carrera, mi);
+                else this.finalizarCarrera(ranking, carrera, mi);
+                return;
+            }
             let pos = 1;
             snapshot.forEach(s => { if (s.id !== mi.id && s.progreso > miSnap.progreso) pos++; });
             posEl.textContent = `${pos}°`;
@@ -615,8 +734,10 @@ const UI = {
             snapshot.forEach(s => {
                 const runner = carriles.querySelector(`[data-id="${s.id}"] .runner`);
                 if (!runner) return;
-                // Derecha→Izquierda: progreso 0 = left 88%, progreso 1 = left 2%
-                runner.style.left = Math.max(2, 88 - s.progreso * 86) + '%';
+                const boost = this._skillRace && s.id === mi.id ? this._skillRace.bonusVisual : 0;
+                const progresoVisual = Math.min(1, s.progreso + boost);
+                // Izquierda→Derecha: progreso 0 = left 2%, progreso 1 = left 88%
+                runner.style.left = Math.min(88, 2 + progresoVisual * 86) + '%';
                 runner.classList.toggle('lider', s.id === liderId);
                 runner.classList.toggle('cansado', !!s.cansado);
                 runner.classList.toggle('fatiga-baja', !s.cansado && s.staminaPct < 0.3);
@@ -631,9 +752,9 @@ const UI = {
                 // Cambiar animación según cansancio (sprites.js lee data-anim en su loop)
                 const cv = runner.querySelector('canvas.sprite-canvas');
                 if (cv) {
-                    if (s.cansado || s.staminaPct < 0.15) cv.dataset.anim = 'walk_left';
-                    else if (s.staminaPct < 0.35) cv.dataset.anim = 'trot_left';
-                    else cv.dataset.anim = 'gallop_left';
+                    if (s.cansado || s.staminaPct < 0.15) cv.dataset.anim = 'walk_right';
+                    else if (s.staminaPct < 0.35) cv.dataset.anim = 'trot_right';
+                    else cv.dataset.anim = 'gallop_right';
                 }
             });
             distEl.textContent = Math.floor(miSnap.progreso * carrera.distancia);
@@ -648,13 +769,412 @@ const UI = {
                         this._raceEndPending = false;
                         this._raceEnded = true;
                         if (onFinish) onFinish(ranking, carrera, mi);
-                        else this.finalizarCarrera(ranking, carrera, mi);
+                        else this.finalizarCarrera(this._aplicarRitmoPerfecto(ranking, mi), carrera, mi);
                     }, 2500);
                 }
                 requestAnimationFrame(tick);
             }
         };
         requestAnimationFrame(tick);
+    },
+    _iniciarRitmoPerfecto(carrera, mi) {
+        this._cerrarRitmoPerfecto();
+        const nivel = mi.nivel || 1;
+        const dificultad = Math.min(5, Math.floor(nivel / 5) + 1);
+        const tipos = ['ritmo', 'secuencia', 'reaccion', 'precision', 'memoria', 'combo', 'timing', 'reflejos'];
+        const tipoActual = tipos[Math.floor(Math.random() * tipos.length)];
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'ritmo-perfecto';
+        overlay.className = 'ritmo-perfecto';
+        document.body.appendChild(overlay);
+        
+        this._skillRace = { 
+            score: 0, 
+            bonusVisual: 0, 
+            overlay, 
+            running: true, 
+            tipo: tipoActual,
+            dificultad,
+            nivel
+        };
+        
+        this._iniciarMinijuego(tipoActual, dificultad, overlay);
+    },
+    _iniciarMinijuego(tipo, dificultad, overlay) {
+        const handlers = {
+            ritmo: () => this._minijuegoRitmo(dificultad, overlay),
+            secuencia: () => this._minijuegoSecuencia(dificultad, overlay),
+            reaccion: () => this._minijuegoReaccion(dificultad, overlay),
+            precision: () => this._minijuegoPrecision(dificultad, overlay),
+            memoria: () => this._minijuegoMemoria(dificultad, overlay),
+            combo: () => this._minijuegoCombo(dificultad, overlay),
+            timing: () => this._minijuegoTiming(dificultad, overlay),
+            reflejos: () => this._minijuegoReflejos(dificultad, overlay)
+        };
+        if (handlers[tipo]) handlers[tipo]();
+    },
+    
+    _minijuegoRitmo(dif, overlay) {
+        const velocidad = 1.2 + dif * 0.4;
+        const zoneSize = Math.max(10, 20 - dif * 2);
+        overlay.innerHTML = `<div class="rp-title">⚡ Ritmo Perfecto (Nv.${dif})</div>
+            <div class="rp-bar"><div class="rp-zone" style="left:${50-zoneSize/2}%;width:${zoneSize}%"></div><div class="rp-cursor"></div></div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Espacio/Click en verde</div>`;
+        const s = this._skillRace;
+        s.cursor = 0; s.dir = 1;
+        const hit = (e) => {
+            if (e && e.type === 'keydown' && e.code !== 'Space') return;
+            if (e) e.preventDefault();
+            if (!s.running) return;
+            const perfecto = s.cursor >= 50-zoneSize/4 && s.cursor <= 50+zoneSize/4;
+            const bueno = s.cursor >= 50-zoneSize/2 && s.cursor <= 50+zoneSize/2;
+            if (perfecto) { s.score += 3; s.bonusVisual = Math.min(0.1, s.bonusVisual + 0.022); this.toast('¡Perfecto!', 'exito'); }
+            else if (bueno) { s.score += 1; s.bonusVisual = Math.min(0.06, s.bonusVisual + 0.012); }
+            else { s.score = Math.max(0, s.score - 1); s.bonusVisual = Math.max(0, s.bonusVisual - 0.018); this.toast('Fallo', 'error'); }
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+        overlay.addEventListener('pointerdown', hit);
+        const loop = () => {
+            if (!s.running) return;
+            s.cursor += s.dir * velocidad;
+            if (s.cursor >= 100) { s.cursor = 100; s.dir = -1; }
+            if (s.cursor <= 0) { s.cursor = 0; s.dir = 1; }
+            const cur = overlay.querySelector('.rp-cursor');
+            if (cur) cur.style.left = s.cursor + '%';
+            s.bonusVisual = Math.max(0, s.bonusVisual - 0.0009);
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    },
+    
+    _minijuegoSecuencia(dif, overlay) {
+        const longitud = 2 + dif;
+        const teclas = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+        const simbolos = {'ArrowUp':'↑','ArrowDown':'↓','ArrowLeft':'←','ArrowRight':'→'};
+        const secuencia = Array.from({length:longitud}, () => teclas[Math.floor(Math.random()*teclas.length)]);
+        overlay.innerHTML = `<div class="rp-title">🎯 Secuencia (Nv.${dif})</div>
+            <div class="rp-seq">${secuencia.map(k => `<span class="seq-key">${simbolos[k]}</span>`).join('')}</div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Presiona las flechas en orden</div>`;
+        const s = this._skillRace;
+        s.seqIdx = 0; s.secuencia = secuencia;
+        const hit = (e) => {
+            if (!s.running || e.type !== 'keydown') return;
+            if (e.code === secuencia[s.seqIdx]) {
+                s.seqIdx++;
+                overlay.querySelectorAll('.seq-key')[s.seqIdx-1].style.background = '#2ecc71';
+                if (s.seqIdx >= secuencia.length) {
+                    s.score += 4 + dif;
+                    s.bonusVisual = Math.min(0.12, s.bonusVisual + 0.03);
+                    this.toast('¡Secuencia completa!', 'exito');
+                    s.seqIdx = 0;
+                    overlay.querySelectorAll('.seq-key').forEach(k => k.style.background = '');
+                }
+            } else if (teclas.includes(e.code)) {
+                s.score = Math.max(0, s.score - 2);
+                s.bonusVisual = Math.max(0, s.bonusVisual - 0.02);
+                s.seqIdx = 0;
+                overlay.querySelectorAll('.seq-key').forEach(k => k.style.background = '');
+                this.toast('Secuencia incorrecta', 'error');
+            }
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+    },
+    
+    _minijuegoReaccion(dif, overlay) {
+        const intervalo = Math.max(800, 2200 - dif * 300);
+        overlay.innerHTML = `<div class="rp-title">⚡ Reacción (Nv.${dif})</div>
+            <div class="rp-react" id="rp-react">Espera...</div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Presiona cuando veas ¡YA!</div>`;
+        const s = this._skillRace;
+        s.esperando = false; s.momento = 0;
+        const mostrar = () => {
+            if (!s.running) return;
+            const react = document.getElementById('rp-react');
+            if (!react) return;
+            react.textContent = '¡YA!';
+            react.style.background = '#2ecc71';
+            react.style.transform = 'scale(1.3)';
+            s.esperando = true;
+            s.momento = performance.now();
+        };
+        const reset = () => {
+            if (!s.running) return;
+            const react = document.getElementById('rp-react');
+            if (react) {
+                react.textContent = 'Espera...';
+                react.style.background = '';
+                react.style.transform = '';
+            }
+            s.esperando = false;
+            setTimeout(mostrar, Math.random() * intervalo + intervalo);
+        };
+        const hit = (e) => {
+            if (!s.running) return;
+            if (e && e.type === 'keydown' && e.code !== 'Space') return;
+            if (e) e.preventDefault();
+            if (s.esperando) {
+                const tiempo = performance.now() - s.momento;
+                const puntos = tiempo < 200 ? 5 : tiempo < 400 ? 3 : 1;
+                s.score += puntos;
+                s.bonusVisual = Math.min(0.1, s.bonusVisual + 0.02);
+                this.toast(`${tiempo.toFixed(0)}ms!`, 'exito');
+                reset();
+            } else {
+                s.score = Math.max(0, s.score - 2);
+                this.toast('Muy pronto', 'error');
+            }
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+        overlay.addEventListener('pointerdown', hit);
+        setTimeout(mostrar, intervalo);
+    },
+    
+    _minijuegoPrecision(dif, overlay) {
+        const velocidad = 0.8 + dif * 0.3;
+        const targetSize = Math.max(8, 18 - dif * 2);
+        overlay.innerHTML = `<div class="rp-title">🎯 Precisión (Nv.${dif})</div>
+            <div class="rp-bar"><div class="rp-target" id="rp-target" style="width:${targetSize}%"></div><div class="rp-cursor"></div></div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Click cuando cursor toque objetivo</div>`;
+        const s = this._skillRace;
+        s.cursor = 0; s.dir = 1; s.targetPos = Math.random() * (100 - targetSize);
+        document.getElementById('rp-target').style.left = s.targetPos + '%';
+        const hit = (e) => {
+            if (e && e.type === 'keydown' && e.code !== 'Space') return;
+            if (e) e.preventDefault();
+            if (!s.running) return;
+            if (s.cursor >= s.targetPos && s.cursor <= s.targetPos + targetSize) {
+                s.score += 3;
+                s.bonusVisual = Math.min(0.1, s.bonusVisual + 0.02);
+                this.toast('¡En el blanco!', 'exito');
+                s.targetPos = Math.random() * (100 - targetSize);
+                document.getElementById('rp-target').style.left = s.targetPos + '%';
+            } else {
+                s.score = Math.max(0, s.score - 1);
+                this.toast('Fallaste', 'error');
+            }
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+        overlay.addEventListener('pointerdown', hit);
+        const loop = () => {
+            if (!s.running) return;
+            s.cursor += s.dir * velocidad;
+            if (s.cursor >= 100) { s.cursor = 100; s.dir = -1; }
+            if (s.cursor <= 0) { s.cursor = 0; s.dir = 1; }
+            const cur = overlay.querySelector('.rp-cursor');
+            if (cur) cur.style.left = s.cursor + '%';
+            s.bonusVisual = Math.max(0, s.bonusVisual - 0.0009);
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    },
+    
+    _minijuegoMemoria(dif, overlay) {
+        const cantidad = 2 + dif;
+        const colores = ['🔴','🔵','🟢','🟡','🟣','🟠'];
+        const secuencia = Array.from({length:cantidad}, () => colores[Math.floor(Math.random()*colores.length)]);
+        overlay.innerHTML = `<div class="rp-title">🧠 Memoria (Nv.${dif})</div>
+            <div class="rp-mem" id="rp-mem">${secuencia.join(' ')}</div>
+            <div class="rp-mem-btns" id="rp-mem-btns" style="display:none">${colores.map(c => `<button class="mem-btn" data-color="${c}">${c}</button>`).join('')}</div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Memoriza y repite</div>`;
+        const s = this._skillRace;
+        s.secuencia = secuencia; s.memIdx = 0; s.mostrando = true;
+        setTimeout(() => {
+            if (!s.running) return;
+            document.getElementById('rp-mem').textContent = '???';
+            document.getElementById('rp-mem-btns').style.display = 'flex';
+            s.mostrando = false;
+        }, 1500 + dif * 400);
+        overlay.querySelectorAll('.mem-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (s.mostrando || !s.running) return;
+                if (btn.dataset.color === s.secuencia[s.memIdx]) {
+                    s.memIdx++;
+                    if (s.memIdx >= s.secuencia.length) {
+                        s.score += 5 + dif;
+                        s.bonusVisual = Math.min(0.12, s.bonusVisual + 0.035);
+                        this.toast('¡Correcto!', 'exito');
+                        s.memIdx = 0; s.mostrando = true;
+                        const newSeq = Array.from({length:cantidad}, () => colores[Math.floor(Math.random()*colores.length)]);
+                        s.secuencia = newSeq;
+                        document.getElementById('rp-mem').textContent = newSeq.join(' ');
+                        document.getElementById('rp-mem-btns').style.display = 'none';
+                        setTimeout(() => {
+                            if (!s.running) return;
+                            document.getElementById('rp-mem').textContent = '???';
+                            document.getElementById('rp-mem-btns').style.display = 'flex';
+                            s.mostrando = false;
+                        }, 1500 + dif * 400);
+                    }
+                } else {
+                    s.score = Math.max(0, s.score - 2);
+                    s.bonusVisual = Math.max(0, s.bonusVisual - 0.02);
+                    s.memIdx = 0;
+                    this.toast('Incorrecto', 'error');
+                }
+                document.getElementById('rp-score').textContent = s.score;
+            });
+        });
+    },
+    
+    _minijuegoCombo(dif, overlay) {
+        const objetivo = 3 + dif * 2;
+        overlay.innerHTML = `<div class="rp-title">🔥 Combo (Nv.${dif})</div>
+            <div class="rp-combo">Presiona Espacio <b>${objetivo}</b> veces rápido</div>
+            <div class="rp-combo-bar"><div id="rp-combo-fill" style="width:0%"></div></div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Combo: <b id="rp-combo">0</b>/${objetivo}</div>`;
+        const s = this._skillRace;
+        s.combo = 0; s.comboTime = 0; s.objetivo = objetivo;
+        const hit = (e) => {
+            if (e && e.type === 'keydown' && e.code !== 'Space') return;
+            if (e) e.preventDefault();
+            if (!s.running) return;
+            const now = performance.now();
+            if (now - s.comboTime < 1500) {
+                s.combo++;
+                document.getElementById('rp-combo').textContent = s.combo;
+                document.getElementById('rp-combo-fill').style.width = (s.combo / objetivo * 100) + '%';
+                if (s.combo >= objetivo) {
+                    s.score += 6 + dif;
+                    s.bonusVisual = Math.min(0.12, s.bonusVisual + 0.04);
+                    this.toast('¡Combo completo!', 'exito');
+                    s.combo = 0;
+                    document.getElementById('rp-combo').textContent = '0';
+                    document.getElementById('rp-combo-fill').style.width = '0%';
+                }
+            } else {
+                if (s.combo > 0) {
+                    s.score = Math.max(0, s.score - 1);
+                    this.toast('Combo roto', 'error');
+                }
+                s.combo = 1;
+                document.getElementById('rp-combo').textContent = '1';
+                document.getElementById('rp-combo-fill').style.width = (1 / objetivo * 100) + '%';
+            }
+            s.comboTime = now;
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+        overlay.addEventListener('pointerdown', hit);
+    },
+    
+    _minijuegoTiming(dif, overlay) {
+        const velocidad = 1.5 + dif * 0.5;
+        const zonas = 2 + Math.floor(dif / 2);
+        let zonasHTML = '';
+        for (let i = 0; i < zonas; i++) {
+            const pos = (i + 1) * (100 / (zonas + 1)) - 5;
+            zonasHTML += `<div class="rp-zone" style="left:${pos}%;width:10%"></div>`;
+        }
+        overlay.innerHTML = `<div class="rp-title">⏱️ Timing (Nv.${dif})</div>
+            <div class="rp-bar">${zonasHTML}<div class="rp-cursor"></div></div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Presiona en cualquier zona verde</div>`;
+        const s = this._skillRace;
+        s.cursor = 0; s.dir = 1; s.zonas = zonas;
+        const hit = (e) => {
+            if (e && e.type === 'keydown' && e.code !== 'Space') return;
+            if (e) e.preventDefault();
+            if (!s.running) return;
+            let enZona = false;
+            for (let i = 0; i < zonas; i++) {
+                const pos = (i + 1) * (100 / (zonas + 1));
+                if (s.cursor >= pos - 5 && s.cursor <= pos + 5) enZona = true;
+            }
+            if (enZona) {
+                s.score += 2;
+                s.bonusVisual = Math.min(0.1, s.bonusVisual + 0.018);
+                this.toast('¡Timing!', 'exito');
+            } else {
+                s.score = Math.max(0, s.score - 1);
+                this.toast('Fallo', 'error');
+            }
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+        overlay.addEventListener('pointerdown', hit);
+        const loop = () => {
+            if (!s.running) return;
+            s.cursor += s.dir * velocidad;
+            if (s.cursor >= 100) { s.cursor = 100; s.dir = -1; }
+            if (s.cursor <= 0) { s.cursor = 0; s.dir = 1; }
+            const cur = overlay.querySelector('.rp-cursor');
+            if (cur) cur.style.left = s.cursor + '%';
+            s.bonusVisual = Math.max(0, s.bonusVisual - 0.0009);
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    },
+    
+    _minijuegoReflejos(dif, overlay) {
+        const velocidad = 1.8 + dif * 0.6;
+        overlay.innerHTML = `<div class="rp-title">💨 Reflejos (Nv.${dif})</div>
+            <div class="rp-bar"><div class="rp-zone rp-zone-moving" id="rp-zone-moving" style="width:12%"></div><div class="rp-cursor"></div></div>
+            <div class="rp-info"><b id="rp-score">0</b> pts · Presiona cuando cursor toque zona móvil</div>`;
+        const s = this._skillRace;
+        s.cursor = 0; s.dir = 1; s.zonePos = 50; s.zoneDir = 1;
+        const hit = (e) => {
+            if (e && e.type === 'keydown' && e.code !== 'Space') return;
+            if (e) e.preventDefault();
+            if (!s.running) return;
+            if (s.cursor >= s.zonePos && s.cursor <= s.zonePos + 12) {
+                s.score += 4;
+                s.bonusVisual = Math.min(0.12, s.bonusVisual + 0.025);
+                this.toast('¡Reflejos!', 'exito');
+            } else {
+                s.score = Math.max(0, s.score - 1);
+                this.toast('Fallaste', 'error');
+            }
+            document.getElementById('rp-score').textContent = s.score;
+        };
+        s.hit = hit;
+        window.addEventListener('keydown', hit);
+        overlay.addEventListener('pointerdown', hit);
+        const loop = () => {
+            if (!s.running) return;
+            s.cursor += s.dir * velocidad;
+            if (s.cursor >= 100) { s.cursor = 100; s.dir = -1; }
+            if (s.cursor <= 0) { s.cursor = 0; s.dir = 1; }
+            s.zonePos += s.zoneDir * (0.6 + dif * 0.2);
+            if (s.zonePos >= 88) { s.zonePos = 88; s.zoneDir = -1; }
+            if (s.zonePos <= 0) { s.zonePos = 0; s.zoneDir = 1; }
+            const cur = overlay.querySelector('.rp-cursor');
+            const zone = document.getElementById('rp-zone-moving');
+            if (cur) cur.style.left = s.cursor + '%';
+            if (zone) zone.style.left = s.zonePos + '%';
+            s.bonusVisual = Math.max(0, s.bonusVisual - 0.0009);
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    },
+    _aplicarRitmoPerfecto(ranking, mi) {
+        const score = this._skillRace ? this._skillRace.score : 0;
+        this._cerrarRitmoPerfecto();
+        if (!score) return ranking;
+        const adjusted = ranking.map(r => ({ ...r }));
+        const mine = adjusted.find(r => r.caballo.id === mi.id);
+        if (!mine) return ranking;
+        mine.tiempo = Math.max(0.5, mine.tiempo - score * 0.18);
+        mine.bonusRitmo = score;
+        adjusted.sort((a,b) => a.tiempo - b.tiempo);
+        adjusted.forEach((x,i) => { x.posicion = i + 1; x.premio = ranking.find(r => r.posicion === x.posicion)?.premio || x.premio || 0; });
+        return adjusted;
+    },
+    _cerrarRitmoPerfecto() {
+        if (this._skillRace && this._skillRace.hit) window.removeEventListener('keydown', this._skillRace.hit);
+        const el = document.getElementById('ritmo-perfecto');
+        if (el) el.remove();
+        if (this._skillRace) this._skillRace.running = false;
+        this._skillRace = null;
     },
     finalizarCarreraOnline(resultados, carrera, mi, match) {
         const r = resultados.find(x => x.caballo.id === mi.id);

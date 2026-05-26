@@ -49,9 +49,11 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS matchmaking_queue (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       horse_snapshot JSONB NOT NULL,
+      max_players INTEGER NOT NULL DEFAULT 2,
       joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE matchmaking_queue ADD COLUMN IF NOT EXISTS max_players INTEGER NOT NULL DEFAULT 2`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS online_matches (
@@ -60,9 +62,20 @@ async function initDb() {
       player2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       player1_horse JSONB NOT NULL,
       player2_horse JSONB NOT NULL,
+      race_seed TEXT,
+      max_players INTEGER NOT NULL DEFAULT 2,
+      status TEXT NOT NULL DEFAULT 'lobby',
+      mode_votes JSONB NOT NULL DEFAULT '{}'::jsonb,
+      selected_mode TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  await pool.query(`ALTER TABLE online_matches ADD COLUMN IF NOT EXISTS race_seed TEXT`);
+  await pool.query(`ALTER TABLE online_matches ADD COLUMN IF NOT EXISTS max_players INTEGER NOT NULL DEFAULT 2`);
+  await pool.query(`ALTER TABLE online_matches ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'lobby'`);
+  await pool.query(`ALTER TABLE online_matches ADD COLUMN IF NOT EXISTS mode_votes JSONB NOT NULL DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE online_matches ADD COLUMN IF NOT EXISTS selected_mode TEXT`);
 }
 
 async function run(sql, params = []) {
